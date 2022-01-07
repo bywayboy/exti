@@ -1,0 +1,19 @@
+{
+    "name": "gongpiyu/exti",
+    "type": "project",
+    "license": "1.0",
+
+    "autoload": {
+        "files": [
+            "sys/helpers/functions.php"
+        ],
+        "psr-4": {
+            "app\\": "app",
+            "sys\\": "sys",
+            "rpc\\": "rpc"
+        }
+    },
+    "require": {
+        "swoole/ide-helper": "^4.7"
+    }
+}
