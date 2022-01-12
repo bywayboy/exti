@@ -5,10 +5,10 @@
 return [
     'default'=>[
         'dbhost'=>'127.0.0.1',
-        'dbport'=>50401,
-        'dbname'=>'fuck',
-        'dbuser'=>'exti',
-        'dbpass'=>'exti',
+        'dbport'=>3306,
+        'dbname'=>'exti',
+        'dbuser'=>'root',
+        'dbpass'=>'exti.cc.czh',
         'charset'=>'utf8mb4',
         'size'=>16,
     ],

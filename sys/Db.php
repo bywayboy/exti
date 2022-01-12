@@ -18,7 +18,7 @@ use sys\db\SubQuery;
  *  4. 后续该对象将加入限制, 不允许跨协程使用. 
  */
 
-class DbX{
+class Db{
 
     # SQL 类型
     const SQL_INSERT = 0;
@@ -203,7 +203,7 @@ class DbX{
             }
             $type = array_merge($typeArr, $type ?? []);
         }
-        return new \sys\SqlBuilder($this, $table, $type);
+        return new \sys\SqlBuilder($this, $table, $type ?? []);
     }
 
     /**

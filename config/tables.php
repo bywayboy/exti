@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'fuck'=>[
+    'exti'=>[
         'table_names'=>[
-            'tp_nb_merchant_bind'
+            'tp_user'
         ]
     ],
     'structs'=>[

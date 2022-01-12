@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 /*
     全局函数定义文件
     作者: 龚辟愚
@@ -23,7 +25,7 @@ function json($msg, int $status = 200, string $mime='application/json; charset=u
 
 function html(string $msg, int $status = 200)
 {
-    return new \sys\servers\http\HtmlResppnse($msg, $status);
+    return new \sys\servers\http\HtmlResponse($msg, $status);
 }
 
 

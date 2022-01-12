@@ -13,10 +13,11 @@ use Stringable;
  *  2. 用于配合批量执行类来执行批量SQL语句.
  */
 class SubQuery {
-    protected $_sql;
-    protected $_params;
-    protected $_sqltype; 
-    public function __construct($sql, $params, int $type)
+    protected string $_sql;
+    protected array $_params;
+    protected int $_sqltype; 
+    
+    public function __construct(string $sql, array $params, int $type)
     {
         $this->_sqltype = $type;
         $this->_sql = $sql;

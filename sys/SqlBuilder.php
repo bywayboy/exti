@@ -4,10 +4,6 @@ declare(strict_types=1);
 namespace sys;
 
 use Exception;
-use Stringable;
-use Throwable;
-
-use function PHPSTORM_META\type;
 
 class SqlBuilder {
     protected $_table;          # 要构造SQL的表名
@@ -42,10 +38,10 @@ class SqlBuilder {
         
     ];
 
-    public function __construct(\sys\DbX $db, string $table, array $types)
+    public function __construct(\sys\Db $db, string $table, array $types)
     {
         $this->db = $db;
-        $this->_table = $table;
+        $this->_table = str_replace('.', '`.`', $table);
         $this->_types = $types;
     }
 
@@ -60,11 +56,11 @@ class SqlBuilder {
     }
 
 
-    protected function  _parseValue($value, $type)
+    protected function  _parseValue($value, string $type)
     {
         if('json' === $type)
             return [json_encode($value), \PDO::PARAM_STR];
-        return [$value, static::$bindType[ $type ]];
+        return [$value, static::$bindType[ $type ] ?? \PDO::PARAM_STR];
     }
 
     /**
@@ -405,7 +401,7 @@ class SqlBuilder {
     public function insert(array $data) : ?int
     {
         $sql = $this->insertSql($data);
-        if(1 == $this->db->execute($sql, $this->_params, \sys\DbX::SQL_INSERT)){
+        if(1 == $this->db->execute($sql, $this->_params, \sys\Db::SQL_INSERT)){
             return $this->db->lastInsertId();
         }
         return null;
@@ -413,55 +409,55 @@ class SqlBuilder {
 
     public function find() : ?array {
         $sql = $this->findSql();
-        if(1 == $this->db->execute($sql, $this->_params, \sys\DbX::SQL_FIND)){
-            return $this->db->result($this->_types, \sys\DbX::SQL_FIND);
+        if(1 == $this->db->execute($sql, $this->_params, \sys\Db::SQL_FIND)){
+            return $this->db->result($this->_types, \sys\Db::SQL_FIND);
         }
         return null;
     }
 
     public function select() : ? array {
-        $sql = $this->findSql();
-        if(0 < $this->db->execute($sql, $this->_params, \sys\DbX::SQL_SELECT)){
-            return $this->db->result($this->_types,\sys\DbX::SQL_SELECT);
+        $sql = $this->selectSql();
+        if(0 < $this->db->execute($sql, $this->_params, \sys\Db::SQL_SELECT)){
+            return $this->db->result($this->_types,\sys\Db::SQL_SELECT);
         }
         return null;
     }
 
     public function update($data = []) : ? int {
         $sql = $this->updateSql($data);
-        return $this->db->execute($sql, $this->_params, \sys\DbX::SQL_UPDATE);
+        return $this->db->execute($sql, $this->_params, \sys\Db::SQL_UPDATE);
     }
 
     public function delete() : ?int {
         $sql = $this->deleteSql();
-        return $this->db->execute($sql, $this->_params, \sys\DbX::SQL_DELETE);
+        return $this->db->execute($sql, $this->_params, \sys\Db::SQL_DELETE);
     }
 
     # ==   缓存查询方法 用于字查询 或者 批量查询场合 ===
 
     public function cacheInsert($data = []) : \sys\db\SubQuery {
         $sql = $this->insertSql($data);
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\DbX::SQL_INSERT);
+        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_INSERT);
     }
 
     public function cacheSelect() :\sys\db\SubQuery {
         $sql = $this->selectSql();
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\DbX::SQL_SELECT);
+        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_SELECT);
     }
 
     public function cacheFind() :\sys\db\SubQuery {
         $sql = $this->findSql();
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\DbX::SQL_FIND);
+        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_FIND);
     }
 
     public function cacheUpdate() :\sys\db\SubQuery {
         $sql = $this->updateSql();
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\DbX::SQL_FIND);
+        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_FIND);
     }
 
     public function cacheDelete() : \sys\db\SubQuery {
         $sql = $this->deleteSql();
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\DbX::SQL_FIND);
+        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_FIND);
     }
 
 }

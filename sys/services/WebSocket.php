@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace sys\services;
 
@@ -6,7 +7,7 @@ use Swoole\Http\Request;
 use sys\SysEvents;
 
 class WebSocket {
-    protected static $defmethods = ['BeforeUpgrade'=>true,'AfterConnected'=>true,'AfterClose'=>true,'OnBinaryMessage'=>true,'BeforeShutdown'=>true];
+    protected static array $defmethods = ['BeforeUpgrade'=>true,'AfterConnected'=>true,'AfterClose'=>true,'OnBinaryMessage'=>true,'BeforeShutdown'=>true];
 
     public function __construct()
     {
@@ -22,7 +23,7 @@ class WebSocket {
      * WebSocket 连接建立之前触发该事件
      * @return bool true 表示允许连接 false 表示反对连接.
      */
-    public function BeforeUpgrade(Request $request):bool
+    public function BeforeUpgrade(Request $request) : bool
     {
         return true;
     }
@@ -48,7 +49,7 @@ class WebSocket {
     /**
      *  收到二进制消息.
      */
-    public function OnBinaryMessage(string $data)
+    public function OnBinaryMessage(string $data) : void
     {
 
     }
@@ -60,7 +61,7 @@ class WebSocket {
 
     }
 
-    public function methodNotAllowed($methodName):bool
+    public function methodNotAllowed(string $methodName):bool
     {
         return static::$defmethods[$methodName] ?? false;
     }

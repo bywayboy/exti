@@ -9,23 +9,22 @@ use Swoole\Http\Response;
 use sys\Log;
 
 class HttpServer {
+    protected \Swoole\Coroutine\Http\Server $server;
 
-    public static function execute(array $config, string $module, int $workerId)
+    public function __construct(array $config, string $module, int $workerId)
     {
         $sharePort = $config['share_port'];
         $listenPort = $sharePort ? $config['listen_port'] : $config['listen_port'] + $workerId;
+        $this->server = new \Swoole\Coroutine\Http\Server($config['bind_address'], $listenPort, $config['ssl'], $sharePort);
 
-        $server = new \Swoole\Coroutine\Http\Server($config['bind_address'], $listenPort, $config['ssl'], $sharePort);
-
-
-        //TODO: 开启了SSL的话, 需要进一步设置证书
+        # TODO: 开启了SSL的话, 需要进一步设置证书
         if($config['ssl'])
         {
 
         }
 
-        //服务器请求路由映射
-        $server->handle('', function(Request $request, Response $response) use($module, $sharePort) {
+        # 服务器请求路由映射
+        $this->server->handle('', function(Request $request, Response $response) use($module, $sharePort) {
             $ns = "\\app\\{$module}\\controller\\";
             
             $uri = $request->server['request_uri'];
@@ -92,8 +91,13 @@ class HttpServer {
                 $response->end(\implode("\n", $err));
             }
         });
+    }
+    
+    public function start() {
+        $this->server->start();
+    }
 
-        //启动服务
-        $server->start();
+    public function shutdown(){
+        $this->server->shutdown();
     }
 }

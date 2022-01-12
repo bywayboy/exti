@@ -45,10 +45,11 @@ class Helpers
             if(empty($table_names))
                 continue;
 
-            //$pads = trim(\str_repeat('?,', count($table_names)), ',');
-            $tables_str = implode('\',\'', $table_names);
-            $records = $db->query("SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_COMMENT FROM
-            `information_schema`.`COLUMNS` where `TABLE_SCHEMA` = '{$dbname}' AND `TABLE_NAME` IN ('{$tables_str}') ORDER BY TABLE_NAME ASC");
+            $records = $db->table('information_schema.COLUMNS')
+                        ->where([['TABLE_SCHEMA','=', $dbname], ['TABLE_NAME','IN', $table_names]])
+                        ->field(['TABLE_NAME', 'COLUMN_NAME', 'DATA_TYPE', 'COLUMN_COMMENT'])
+                        ->order('TABLE_NAME ASC')
+                        ->select();
 
             $types_map = [
                 //数值类
@@ -100,7 +101,10 @@ class Helpers
             }
             $db = null;
         }
-        \sys\Config::set('tables_gen', $result);
-        \sys\Config::store('tables_gen');
+
+        if(!empty($result)){
+            \sys\Config::set('tables_gen', $result);
+            \sys\Config::store('tables_gen');
+        }
     }
 }

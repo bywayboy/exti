@@ -3,7 +3,7 @@ declare(strict_types=1);
 namespace sys\servers\http;
 
 
-class JsonResponse implements Response
+class JsonResponse implements \sys\servers\http\Response
 {
     protected $content;
     protected $status;

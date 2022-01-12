@@ -14,6 +14,4 @@ class Service
     {
         return upgrade($request, $response, ServiceWs::class);
     }
-
-
 }

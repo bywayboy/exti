@@ -2,10 +2,8 @@
 declare(strict_types=1);
 namespace sys\servers\http;
 
-use \Swoole\Http\Response;
 
-
-class HtmlResppnse implements Response
+class HtmlResponse implements \sys\servers\http\Response
 {
     protected $content;
     protected $status;
@@ -19,7 +17,7 @@ class HtmlResppnse implements Response
         $this->mime = $mime;
     }
 
-    public function output(Response $resp)
+    public function output(\Swoole\Http\Response $resp)
     {
         if($this->status !== 200)
             $resp->setStatusCode($this->status);
