@@ -18,12 +18,12 @@ function isWebSocket(\Swoole\Http\Request $req){
 
 function json($msg, int $status = 200, string $mime='application/json; charset=utf-8')
 {
-    return new \sys\resp\JsonResp($msg, $status, $mime);
+    return new \sys\servers\http\JsonResponse($msg, $status, $mime);
 }
 
 function html(string $msg, int $status = 200)
 {
-    return new \sys\resp\HtmlResp($msg, $status);
+    return new \sys\servers\http\HtmlResppnse($msg, $status);
 }
 
 
@@ -155,16 +155,10 @@ function upgrade(Request $request, Response $response, string $class, int $queue
 
 
 
-/**
- * 表单验证
- */
-function validate(string $class, string $scene, array $data) : bool
-{
-    
-    return true;
-}
-
-if(!function_exists('LoadEnvironmentFromFile')){
+if(!function_exists('LoadEnvironmentFromFile')) {
+    /**
+     * 系统内置函数, 加载环境变量文件.
+     */
     function LoadEnvironmentFromFile(){
         $envfile = APP_ROOT . '/scripts/.env';
         if(is_file($envfile)){
@@ -178,5 +172,24 @@ if(!function_exists('LoadEnvironmentFromFile')){
                 }
             }
         }
+    }
+}
+
+if(!function_exists('validate')){
+    /**
+     * 校验快捷函数
+     * @param array $$rules             校验规则
+     * @param null|string $cacheKey     缓存键值
+     * @return \sys\validator\Validator
+     */
+    function validate(array $rules, ?string $cacheKey = null) :\sys\validator\Validator {
+        return new \sys\validator\Validator($rules, $cacheKey);
+    }
+}
+
+if(!function_exists('rmb_format')){
+    function rmb_format(float $rmb) : string {
+        $str = number_format($rmb, 2, '.', '');
+        return rtrim(rtrim($str, '0'), '.');
     }
 }

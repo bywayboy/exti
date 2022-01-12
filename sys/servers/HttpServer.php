@@ -66,7 +66,7 @@ class HttpServer {
                     if(null === $ret){
                         $response->end('');
                     }else{
-                        if($ret instanceof \sys\resp\Resp){
+                        if($ret instanceof \sys\servers\http\Response){
                             $ret->output($response);
                         }else{
                             if(is_array($ret)){

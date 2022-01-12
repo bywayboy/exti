@@ -1,25 +1,23 @@
 <?php
 declare(strict_types=1);
-namespace sys\resp;
-
-use \Swoole\Http\Response;
+namespace sys\servers\http;
 
 
-class HtmlResp implements Resp
+class JsonResponse implements Response
 {
     protected $content;
     protected $status;
     protected $mime;
 
 
-    public function __construct(string $content, int $status = 200, string $mime = 'text/html; charset=utf-8')
+    public function __construct($content, int $status = 200, string $mime = 'application/json; charset=utf-8')
     {
-        $this->content = $content;
+        $this->content = is_string($content)? $content : json_encode($content, JSON_UNESCAPED_UNICODE);
         $this->status = $status;
         $this->mime = $mime;
     }
 
-    public function output(Response $resp)
+    public function output(\Swoole\Http\Response $resp)
     {
         if($this->status !== 200)
             $resp->setStatusCode($this->status);
@@ -29,4 +27,3 @@ class HtmlResp implements Resp
         $resp->end($this->content);
     }
 }
-

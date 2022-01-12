@@ -1,20 +1,20 @@
 <?php
 declare(strict_types=1);
-namespace sys\resp;
+namespace sys\servers\http;
 
 use \Swoole\Http\Response;
 
 
-class JsonResp implements Resp
+class HtmlResppnse implements Response
 {
     protected $content;
     protected $status;
     protected $mime;
 
 
-    public function __construct($content, int $status = 200, string $mime = 'application/json; charset=utf-8')
+    public function __construct(string $content, int $status = 200, string $mime = 'text/html; charset=utf-8')
     {
-        $this->content = is_string($content)? $content : json_encode($content, JSON_UNESCAPED_UNICODE);
+        $this->content = $content;
         $this->status = $status;
         $this->mime = $mime;
     }
@@ -29,3 +29,4 @@ class JsonResp implements Resp
         $resp->end($this->content);
     }
 }
+

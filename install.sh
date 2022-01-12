@@ -112,8 +112,17 @@ if [ 0 = $? ]; then
     cat <<EOF > ${CURPATH}/run.sh
 #!/bin/bash
 
+echo 正在停止服务: ${SERVICE_NAME} ...
+timeout 3 systemctl stop ${SERVICE_NAME}.service
+ZOMBE_PROC_NUM=\$(ps ax | grep ${SERVICE_NAME} | grep -v grep | wc -l)
+echo 正在清理僵尸进程,共\${ZOMBE_PROC_NUM}个....
+ZOMBE_PIDS=\$(ps ax | grep ${SERVICE_NAME} | grep -v grep | awk '{print \$1}')
+for ZPID in \${ZOMBE_PIDS}
+do
+    kill -s 9 \${ZPID}
+done
+
 ulimit -n 262140
-systemctl stop ${SERVICE_NAME}.service
 /usr/local/php/bin/php -c ${PHP_CONFIG_FILE} -f public/index.php cli ${SERVICE_NAME}
 EOF
 
@@ -126,13 +135,20 @@ EOF
 
 cat <<EOF > ${CURPATH}/restart.sh
 #!/bin/bash
+
 echo 正在停止服务: ${SERVICE_NAME} ...
 timeout 3 systemctl stop ${SERVICE_NAME}.service
-echo 正在清理僵尸进程....
-killall -s 9 netbarfee
-echo 正在启动服务
+ZOMBE_PROC_NUM=\$(ps ax | grep ${SERVICE_NAME} | grep -v grep | wc -l)
+echo 正在清理僵尸进程,共\${ZOMBE_PROC_NUM}个....
+ZOMBE_PIDS=\$(ps ax | grep ${SERVICE_NAME} | grep -v grep | awk '{print \$1}')
+for ZPID in \${ZOMBE_PIDS}
+do
+    kill -s 9 \${ZPID}
+done
+echo 正在启动服务...
 systemctl start  ${SERVICE_NAME}.service
-ps aux | grep ${SERVICE_NAME}
+sleep 1s
+ps ax | grep ${SERVICE_NAME} | grep -v grep
 EOF
 
 
