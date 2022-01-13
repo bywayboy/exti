@@ -247,6 +247,9 @@ class Validator implements JsonSerializable {
 
     /**
      * 对数据进行校验.
+     * @param array $data 要验证的数据
+     * @param bool $checkAll 是否验证全部规则, false 遇到不合法的停止验证. true 验证完直到最后一项.
+     * @return Validator 返回验证器对象.
      */
     public function check(array $data, bool $checkAll = false) : Validator {
 
