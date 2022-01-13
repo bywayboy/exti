@@ -247,6 +247,7 @@ class Validator implements JsonSerializable {
 
     /**
      * 对数据进行校验.
+     * @access public
      * @param array $data 要验证的数据
      * @param bool $checkAll 是否验证全部规则, false 遇到不合法的停止验证. true 验证完直到最后一项.
      * @return Validator 返回验证器对象.
@@ -257,9 +258,20 @@ class Validator implements JsonSerializable {
         $this->errMsg = $errMsg;
         return $this;
     }
+    /**
+     * 表单验证是否通过
+     * @access public
+     * @return bool true:验证通过 false:验证没通过
+     */
     public function pass() : bool{
         return empty($this->errMsg);
     }
+
+    /**
+     * 获取第一个验证失败的消息
+     * @access public
+     * @return string 获取第一条验证失败消息.
+     */
     public function getMessage() : ?string {
         return $this->errMsg[0] ?? null;
     }
