@@ -34,10 +34,40 @@ class Validator implements JsonSerializable {
         'integer'=>':?的值必须是整数.',
         'requireIfIn'=>':?为必填项.',
         'array'=>':?必须是数组',
+        'url'=>':?必须是一个URL地址.',
+        'email'=>':?邮箱地址无效.'
     ];
 
     protected static $cache = [];
 
+    private static function _newrule(array &$rules, string $skey, ?string $name, array $exps) {
+        $keys = explode('.', $skey);
+
+        # 设置节点
+        foreach($keys as $i=>$key){
+            if($i == 0){
+                if(!isset($rules[$key])){
+                    $rules[$key] = [];
+                }
+                $rules = &$rules[$key];
+            }else{
+                if(!isset($rules['child'][$key])){
+                    $rules['childs'][$key] = [];
+                }
+                $rules = &$rules['childs'][$key];
+            }
+        }
+        $rules += ['exps'=>$exps, 'name'=>$name];
+    }
+/* 生成结构:
+    [
+        'username'=>[
+            'exps=>[
+                ['require', args:[]]
+            ],
+        ]
+    ]
+*/
     public function __construct(array $rules, ?string $CacheKey_ = null)
     {
         if($CacheKey_ && isset(static::$cache[ $CacheKey_ ])){
@@ -48,23 +78,19 @@ class Validator implements JsonSerializable {
             $xrules = [];
             foreach($rules as $key=>$rule){
                 @list($key, $name) = explode('|', $key, 2);
-                $xfield = [
-                    'name'=> $name ?? $key,
-                    'key'=>explode('.', $key)
-                ];
+                
                 $expressions = explode('|', $rule);
                 $xexps = [];
                 foreach($expressions as $expression){
-                    $parts = explode(':', $expression,3); # 限制分割3次
+                    $parts = explode(':', $expression,3); # 限制分割3次  规则:参数... :消息
                     if(count($parts) > 1){
                         $parts[1] = explode(',', $parts[1]);
                     }
                     $xexps[] = $parts;
                 }
-                $xfield[ 'exps' ] = $xexps;
-                $xrules[] = $xfield;
+                static::_newrule($xrules, $key, $name, $xexps);
             }
-            //echo "生成规则表:".json_encode($xrules, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE)."\n";
+            echo "生成规则表:".json_encode($xrules, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE)."\n";
             $this->rules = $xrules;
             if(null !== $CacheKey_){
                 static::$cache[ $CacheKey_ ] = $xrules;
@@ -113,6 +139,15 @@ class Validator implements JsonSerializable {
     protected static function zip($value, array $data, ?array $args): bool {
         if(null == $value || '' == $value) return true;
         return preg_match('/\d{6}/', $value)?true:false;
+    }
+
+    protected static function url($value, array $data, ?array $args):bool{
+        if(null == $value || '' == $value) return true;
+        return filter_var($value, FILTER_VALIDATE_URL) ?true:false;
+    }
+    protected static function email($value, array $data, ?array $args) : bool{
+        if(null == $value || '' == $value) return true;
+        return filter_var($value, FILTER_VALIDATE_EMAIL) ?true:false;
     }
 
     protected static function min($value, array $data, ?array $args): bool{
@@ -184,32 +219,38 @@ class Validator implements JsonSerializable {
         return is_array($value);
     }
 
+    private function check_(string $pfx, array $rules, array $data, bool $all) :array {
+        $errMsg = [];
+        foreach($rules as $key=>$rule){
+            $val = $data[$key] ?? null;
+
+            # 遍历验证表达式
+            foreach($rule['exps'] as $exp){
+                @list($express, $args, $msg) = $exp;
+                if(!$bResult = static::$express($val, $data, $args ?? null)){
+                    $errMsg[] = $msg ?? str_replace(':?', $rule['name'] ?? $pfx.$key, $this->messages[$express]);
+                }
+                if(!$all && !$bResult){
+                    return $errMsg;
+                }
+            }
+
+            # 有递归验证规则.
+            if(!empty($rule['childs'])){
+                $errMsg = array_merge($errMsg, $this->check_($pfx.$key.'.', $rule['childs'], $val ?? [], $all));
+            }
+        }
+        return $errMsg;
+    }
+
     #############
 
     /**
      * 对数据进行校验.
      */
-    public function check(array $data, bool $CheckAll = false) : Validator {
-        $errMsg = [];
-        # 遍历规则
-        foreach($this->rules as $rule){
-            # 遍历表达式
-            $keys = $rule['key'];
-            foreach($keys as $key){
-                $val  = $val[$key] ?? $data[$key] ?? null;
-            }
-            foreach($rule['exps'] as $exp){
-                @list($express, $args, $msg) = $exp;
-                if(!$bResult = static::$express($val, $data, $args ?? null)){
-                    $errMsg[] = $msg ?? str_replace(':?', $rule['name'], $this->messages[$express]);
-                }
-                if(!$CheckAll && !$bResult){
-                    $this->errMsg = $errMsg;
-                    return $this;
-                }
-            }
-            $val = null;
-        }
+    public function check(array $data, bool $checkAll = false) : Validator {
+
+        $errMsg = $this->check_('', $this->rules, $data, $checkAll);
         $this->errMsg = $errMsg;
         return $this;
     }
