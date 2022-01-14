@@ -238,6 +238,9 @@ class Validator implements JsonSerializable {
             # 有递归验证规则.
             if(!empty($rule['childs'])){
                 $errMsg = array_merge($errMsg, $this->check_($pfx.$key.'.', $rule['childs'], $val ?? [], $all));
+                if(!$all && !empty($errMsg)){
+                    return $errMsg;
+                }
             }
         }
         return $errMsg;

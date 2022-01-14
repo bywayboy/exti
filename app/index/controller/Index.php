@@ -35,7 +35,6 @@ class Index {
         return json([
             'check1'=>$check1,
             'check2'=>$check2,
-            'arr+arr'=>[1,2] + [3,4]
         ]);
     }
 }
