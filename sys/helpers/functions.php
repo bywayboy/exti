@@ -189,9 +189,35 @@ if(!function_exists('validate')){
     }
 }
 
-if(!function_exists('rmb_format')){
+if(!function_exists('rmb_format')) {
+    /**
+     * @param float $rmb 一个浮点数
+     * @return string 返回保留0～2位小数的数字
+     */
     function rmb_format(float $rmb) : string {
-        $str = number_format($rmb, 2, '.', '');
-        return rtrim(rtrim($str, '0'), '.');
+        return rtrim(rtrim(number_format($rmb, 2, '.', ''), '0'), '.');
+    }
+}
+
+if(!function_exists('array_to_object')){
+    function array_to_object(array $array, string $class, bool $renew) :array {
+        foreach($array as &$item){
+            $item = $class::CreateInstance($item, false, $renew);
+        }
+        return $array;
+    }
+}
+
+if(!function_exists('array_is_list')){
+    /**
+     * 在PHP-8.1 这是一个内置函数
+     */
+    function array_is_list(array $array): bool {
+        $expectedKey = 0;
+        foreach ($array as $i => $_) {
+            if ($i !== $expectedKey) { return false; }
+            $expectedKey++;
+        }
+        return true;
     }
 }

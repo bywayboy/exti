@@ -15,7 +15,7 @@ class Validator implements JsonSerializable {
     protected $rules;
     protected $errMsg = [];
 
-    protected $messages = [
+    protected static array $messages = [
         'require'=>':?为必填项.',
         'number'=>':?必须为数字.',
         'mobile'=>':?手机号码格式错误.',
@@ -33,12 +33,43 @@ class Validator implements JsonSerializable {
         'confirm'=>':?两次输入不一致.',
         'integer'=>':?的值必须是整数.',
         'requireIfIn'=>':?为必填项.',
+        'requireIfNot'=>':?为必填项.',
         'array'=>':?必须是数组',
-        'url'=>':?必须是一个URL地址.',
-        'email'=>':?邮箱地址无效.'
+        'list'=>':?必须是列表',
     ];
 
     protected static $cache = [];
+
+    public function __construct(array $rules_, ?string $CacheKey_ = null)
+    {
+        if($CacheKey_ && isset(static::$cache[ $CacheKey_ ])){
+            //echo "命中缓存: {$CacheKey_}\n";
+            $this->rules = static::$cache[ $CacheKey_ ];
+        } else {
+            # 第一步 parse rules
+            $rules = [];
+            foreach($rules_ as $key=>$rule){
+                @list($key, $name) = explode('|', $key, 2);
+                
+                $expressions = explode('|', $rule);
+                $xexps = [];
+                foreach($expressions as $expression){
+                    $parts = explode(':', $expression,3); # 限制分割3次  规则:参数... :消息
+                    if(count($parts) > 1){
+                        $parts[1] = explode(',', $parts[1]);
+                    }
+                    $xexps[] = $parts;
+                }
+                static::_newrule($rules, $key, $name, $xexps);
+            }
+            //echo "生成规则表:".json_encode($rules, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE)."\n";
+            $this->rules = $rules;
+            if(null !== $CacheKey_){
+                static::$cache[ $CacheKey_ ] = $rules;
+                //echo "缓存规则表: {$CacheKey_} \n";
+            }
+        }
+    }
 
     private static function _newrule(array &$rules, string $skey, ?string $name, array $exps) {
         $keys = explode('.', $skey);
@@ -58,45 +89,6 @@ class Validator implements JsonSerializable {
             }
         }
         $rules += ['exps'=>$exps, 'name'=>$name];
-    }
-/* 生成结构:
-    [
-        'username'=>[
-            'exps=>[
-                ['require', args:[]]
-            ],
-        ]
-    ]
-*/
-    public function __construct(array $rules, ?string $CacheKey_ = null)
-    {
-        if($CacheKey_ && isset(static::$cache[ $CacheKey_ ])){
-            //echo "命中缓存: {$CacheKey_}\n";
-            $this->rules = static::$cache[ $CacheKey_ ];
-        } else {
-            # 第一步 parse rules
-            $xrules = [];
-            foreach($rules as $key=>$rule){
-                @list($key, $name) = explode('|', $key, 2);
-                
-                $expressions = explode('|', $rule);
-                $xexps = [];
-                foreach($expressions as $expression){
-                    $parts = explode(':', $expression,3); # 限制分割3次  规则:参数... :消息
-                    if(count($parts) > 1){
-                        $parts[1] = explode(',', $parts[1]);
-                    }
-                    $xexps[] = $parts;
-                }
-                static::_newrule($xrules, $key, $name, $xexps);
-            }
-            echo "生成规则表:".json_encode($xrules, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE)."\n";
-            $this->rules = $xrules;
-            if(null !== $CacheKey_){
-                static::$cache[ $CacheKey_ ] = $xrules;
-                //echo "缓存规则表: {$CacheKey_} \n";
-            }
-        }
     }
 
     public function jsonSerialize() : array  {
@@ -118,16 +110,24 @@ class Validator implements JsonSerializable {
         }
         return true;
     }
+    # 用法: 
+    protected static function requireIfNot($value, array $data, ?array $args) : bool {
+        $field = array_pop($args);
+        if(!in_array($data[$field] ?? null, $args)){
+            return !empty($value);
+        }
+        return true;
+    }
 
     protected static function in($value, array $data, array $args): bool
     {
-        if(null == $value || '' === $value) return true;
+        if(null === $value || '' === $value) return true;
         return in_array($value, $args);
     }
 
     protected static function between($value, array $data, array $args): bool
     {
-        if(null == $value || '' === $value) return true;
+        if(null === $value || '' === $value) return true;
         return $value >=$args[0] && $value <= $args[1];
     }
 
@@ -137,32 +137,23 @@ class Validator implements JsonSerializable {
     }
 
     protected static function zip($value, array $data, ?array $args): bool {
-        if(null == $value || '' == $value) return true;
+        if(null === $value || '' === $value) return true;
         return preg_match('/\d{6}/', $value)?true:false;
     }
 
-    protected static function url($value, array $data, ?array $args):bool{
-        if(null == $value || '' == $value) return true;
-        return filter_var($value, FILTER_VALIDATE_URL) ?true:false;
-    }
-    protected static function email($value, array $data, ?array $args) : bool{
-        if(null == $value || '' == $value) return true;
-        return filter_var($value, FILTER_VALIDATE_EMAIL) ?true:false;
-    }
-
     protected static function min($value, array $data, ?array $args): bool{
-        if(null == $value || '' == $value) return true;
+        if(null === $value || '' === $value) return true;
         return $value >= $args[0];
     }
 
     protected static function max($value, array $data, ?array $args): bool{
-        if(null == $value || '' == $value) return true;
+        if(null === $value || '' === $value) return true;
         return $value <= $args[0];
     }
 
     # 正则表达式验证
     protected static function regex($value, array $data, ?array $args) : bool {
-        if(null == $value || '' == $value) return true;
+        if(null === $value || '' === $value) return true;
         return preg_match($args[0], strval($value))?true:false;
     }
 
@@ -174,19 +165,19 @@ class Validator implements JsonSerializable {
 
     # 最小长度限制验证.
     protected static function minlength($value, array $data, ?array $args):bool{
-        if(null == $value || '' == $value) return true;
+        if(null === $value || '' === $value) return true;
         return strlen(trim(strval($value))) >= $args[0];
     }
 
     # 最大长度限制验证
     protected static function maxlength($value, array $data, ?array $args):bool{
-        if(null == $value || '' == $value) return true;
+        if(null === $value || '' === $value) return true;
         return strlen(trim(strval($value))) <= $args[0];
     }
 
     # 长度范围验证
     protected static function length($value, array $data, ?array $args):bool{
-        if(null == $value || '' == $value) return true;
+        if(null === $value || '' === $value) return true;
         $l = strlen(trim(strval($value)));
         return  $l >= $args[0] && $l <= $args[1];
     }
@@ -198,48 +189,66 @@ class Validator implements JsonSerializable {
 
     # 身份证有效性验证.
     protected static function idcard($value, $data, ?array $args): bool {
-        if(null == $value || '' == $value) return true;
+        if(null === $value || '' === $value) return true;
         return preg_match('/(^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$)|(^[1-9]\d{5}\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}$)/', strval($value))?true:false;
     }
 
     # 数字(包含浮点和整数)验证
     protected static function number($value, $data, ?array $args) : bool {
-        if(null == $value || ''==$value) return true;
+        if(null === $value || ''=== $value) return true;
         return preg_match('/^\d+(\.\d+){0,1}$/', strval($value)) ? true : false;
     }
 
     # 整数验证
     protected static function integer($value, $data, ?array $args) : bool {
-        if(null == $value || '' == $value) return true;
+        if(null === $value || '' === $value) return true;
         return preg_match('/^\d+$/', strval($value)) ? true : false;
     }
     # 数组验证
-    protected static function array($value, $data, ?array $arggs) : bool {
-        if(null == $value || '' == $value) return true;
+    protected static function array($value, $data, ?array $args) : bool {
+        if(empty($value)) return true; 
         return is_array($value);
     }
+
+    # 列表验证
+    protected static function list($value, $data, ?array $args) : bool {
+        if(empty($value)) return true;
+        return array_is_list($value);
+    }
+
+    #############
 
     private function check_(string $pfx, array $rules, array $data, bool $all) :array {
         $errMsg = [];
         foreach($rules as $key=>$rule){
             $val = $data[$key] ?? null;
-
+            $islist = false;
             # 遍历验证表达式
             foreach($rule['exps'] as $exp){
                 @list($express, $args, $msg) = $exp;
                 if(!$bResult = static::$express($val, $data, $args ?? null)){
-                    $errMsg[] = $msg ?? str_replace(':?', $rule['name'] ?? $pfx.$key, $this->messages[$express]);
+                    $errMsg[] = $msg ?? str_replace(':?', $rule['name'] ?? $pfx.$key, static::$messages[$express]);
                 }
                 if(!$all && !$bResult){
                     return $errMsg;
                 }
+                if($express ==='list') $islist = true;
             }
 
             # 有递归验证规则.
             if(!empty($rule['childs'])){
-                $errMsg = array_merge($errMsg, $this->check_($pfx.$key.'.', $rule['childs'], $val ?? [], $all));
-                if(!$all && !empty($errMsg)){
-                    return $errMsg;
+                if($islist){
+                    foreach($val ?? [] as $item){
+                        $errMsg = array_merge($errMsg, $this->check_($pfx.$key.'.', $rule['childs'], is_array($item)? $item : [], $all));
+                        if(!$all && !empty($errMsg)){
+                            return $errMsg;
+                        }
+                    }
+                }else{
+                    $errMsg = array_merge($errMsg, $this->check_($pfx.$key.'.', $rule['childs'], is_array($val)? $val : [], $all));
+                    if(!$all && !empty($errMsg)){
+                        return $errMsg;
+                    }
                 }
             }
         }
