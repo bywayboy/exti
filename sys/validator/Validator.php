@@ -32,7 +32,7 @@ class Validator implements JsonSerializable {
         'regex'=>':?的格式错误.',
         'confirm'=>':?两次输入不一致.',
         'integer'=>':?的值必须是整数.',
-        'requireIfIn'=>':?为必填项.',
+        'requireIf'=>':?为必填项.',
         'requireIfNot'=>':?为必填项.',
         'array'=>':?必须是数组',
         'list'=>':?必须是列表',
@@ -102,19 +102,30 @@ class Validator implements JsonSerializable {
         return true;
     }
 
-    # 用法: requireIfIn:wanjia,weixin,alipay,mode  当 mode 为 wanjia,weixin,alipay 时 必填
-    protected static function requireIfIn($value, array $data, ?array $args) : bool {
+    # 用法: requireIf:wanjia,weixin,alipay,mode  当 mode 为 wanjia,weixin,alipay 时 必填
+    protected static function requireIf($value, array $data, ?array $args) : bool {
         $field = array_pop($args);
-        if(in_array($data[$field] ?? null, $args)){
-            return !empty($value);
+        if(empty($args)){
+            if(!empty($data[$field]))
+                return !empty($value);
+        }else{
+            if(in_array($data[$field] ?? null, $args)){
+                return !empty($value);
+            }
         }
         return true;
     }
     # 用法: 
     protected static function requireIfNot($value, array $data, ?array $args) : bool {
         $field = array_pop($args);
-        if(!in_array($data[$field] ?? null, $args)){
-            return !empty($value);
+        
+        if(empty($args)){
+            if(empty($data[$field]))
+                return !empty($value);
+        }else{
+            if(!in_array($data[$field] ?? null, $args)){
+                return !empty($value);
+            }
         }
         return true;
     }
@@ -212,8 +223,13 @@ class Validator implements JsonSerializable {
 
     # 列表验证
     protected static function list($value, $data, ?array $args) : bool {
-        if(empty($value)) return true;
-        return array_is_list($value);
+        if(null === $value || ''=== $value) return true;
+        if(is_array($value) && array_is_list($value)){
+            if(isset($args[0]))
+                return count($value) >= intval($args[0]);
+            return true;
+        }
+        return false;
     }
 
     #############
@@ -245,9 +261,11 @@ class Validator implements JsonSerializable {
                         }
                     }
                 }else{
-                    $errMsg = array_merge($errMsg, $this->check_($pfx.$key.'.', $rule['childs'], is_array($val)? $val : [], $all));
-                    if(!$all && !empty($errMsg)){
-                        return $errMsg;
+                    if(is_array($val)){
+                        $errMsg = array_merge($errMsg, $this->check_($pfx.$key.'.', $rule['childs'], $val, $all));
+                        if(!$all && !empty($errMsg)){
+                            return $errMsg;
+                        }
                     }
                 }
             }
