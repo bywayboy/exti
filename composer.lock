@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "swoole/ide-helper",
-            "version": "4.8.4",
+            "version": "4.8.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/swoole/ide-helper.git",
-                "reference": "feff48c90c87674ee7f1d40dd055edf9a212ad88"
+                "reference": "b277ed171a29f7bbce1c5feee5581553101e06bf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/swoole/ide-helper/zipball/feff48c90c87674ee7f1d40dd055edf9a212ad88",
-                "reference": "feff48c90c87674ee7f1d40dd055edf9a212ad88",
+                "url": "https://api.github.com/repos/swoole/ide-helper/zipball/b277ed171a29f7bbce1c5feee5581553101e06bf",
+                "reference": "b277ed171a29f7bbce1c5feee5581553101e06bf",
                 "shasum": ""
             },
             "type": "library",
@@ -34,7 +34,7 @@
             "description": "IDE help files for Swoole.",
             "support": {
                 "issues": "https://github.com/swoole/ide-helper/issues",
-                "source": "https://github.com/swoole/ide-helper/tree/4.8.4"
+                "source": "https://github.com/swoole/ide-helper/tree/4.8.6"
             },
             "funding": [
                 {
@@ -46,7 +46,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2021-12-17T05:37:49+00:00"
+            "time": "2022-01-11T17:42:26+00:00"
         }
     ],
     "packages-dev": [],

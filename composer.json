@@ -1,5 +1,5 @@
 {
-    "name": "gongpiyu/exti",
+    "name": "bywayboy/exti",
     "type": "project",
     "license": "1.0",
 
@@ -14,6 +14,6 @@
         }
     },
     "require": {
-        "swoole/ide-helper": "^4.7"
+        "swoole/ide-helper": "^4.8"
     }
 }

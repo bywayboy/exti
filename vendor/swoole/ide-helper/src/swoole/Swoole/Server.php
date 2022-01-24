@@ -469,9 +469,11 @@ class Server
     }
 
     /**
-     * @return mixed
+     * @param \Swoole\Process $process
+     * @return int|false Return the ID of the process (\Swoole\Process::$id) back if succeeds; otherwise return FALSE.
+     * @see \Swoole\Process::$id
      */
-    public function addProcess(\swoole_process $process)
+    public function addProcess(Process $process)
     {
     }
 
