@@ -93,7 +93,7 @@ class Helpers
             ];
 
             $tables = \sys\Config::get("tables.{$dbname}.structs");
-            foreach($records as $item){
+            foreach($records ?? [] as $item){
                 $tbname = $item['TABLE_NAME'];
                 $colname = $item['COLUMN_NAME'];
 

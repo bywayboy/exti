@@ -8,7 +8,7 @@ declare(strict_types=1);
 namespace sys;
 
 class Config{
-    private static $config = [];
+    private static array $config = [];
     private static function cache(string $name, $value) :void {
         static::$config[$name] = $value;
     }

@@ -29,7 +29,7 @@ class SqlBuilder {
         'boolean'   => \PDO::PARAM_BOOL,
         'null'      => \PDO::PARAM_NULL,
     ];
-
+    protected static $tjson_ = ['json'=>true,'array'=>true,'object'=>true];
     /**
      * 服务器断线标识字符, 出现一错误代表连接无法再使用了.
      * @var array
@@ -58,7 +58,7 @@ class SqlBuilder {
 
     protected function  _parseValue($value, string $type)
     {
-        if('json' === $type)
+        if(static::$tjson_[$type] ?? false)
             return [json_encode($value), \PDO::PARAM_STR];
         return [$value, static::$bindType[ $type ] ?? \PDO::PARAM_STR];
     }
@@ -158,6 +158,8 @@ class SqlBuilder {
         case '>=':
         case '<=':
             return $this->_parseEq($field, $cond, $exp, $type);
+        case 'LIKE':
+            return $this->_parseEq($field, $cond, $exp, 'string');
         case 'IN':
         case 'NOT IN':
             return $this->_parseIn($field, $cond, count($exp) >=3? $exp[2] : null, $type);

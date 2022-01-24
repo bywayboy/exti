@@ -61,7 +61,7 @@ class HttpServer {
                 $m = new $class;
                 //$m->isWebSocket = isWebSocket($request);
 
-                if($ret = $m->$method($request, $response)){
+                if($ret = $m->$method($request, $response)) {
                     if(null === $ret){
                         $response->end('');
                     }else{
@@ -77,7 +77,6 @@ class HttpServer {
                         }
                     }
                 }
-                return;
             }catch(\Throwable $e){
                 $file = SITE_ROOT. $uri;
                 $response->header('Content-Type','text/plain');

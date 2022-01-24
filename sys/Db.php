@@ -88,7 +88,9 @@ class Db{
         //if($id = \Swoole\Coroutine::getPcid($cid))
         //    static::checkDeadLock($id);
     }
-
+    /**
+     * @return PDOProxy
+     */
     protected function getConn() : PDOProxy {
         if($this->conn !== null)
             return $this->conn;
@@ -275,7 +277,10 @@ class Db{
                     $xrow[$key] = intval($val);break;
                 case 'double':
                     $xrow[$key] = floatval($val);break;
+                case 'object':
+                    $xrow[$key] = json_decode($val, false);break;
                 case 'json':
+                case 'array':
                     $xrow[$key] = json_decode($val, true);break;
                 default:
                     $xrow[$key] = $val;break;
@@ -295,7 +300,10 @@ class Db{
                         $row[$key] = intval($val);break;
                     case 'double':
                         $row[$key] = floatval($val);break;
+                    case 'object':
+                        $xrow[$key] = json_decode($val, false);break;
                     case 'json':
+                    case 'array':
                         $row[$key] = json_decode($val, true);break;
                     default:
                         $row[$key] = $val;break;
