@@ -72,7 +72,7 @@ class SqlBuilder {
      * @param  string|null       $type       字段类型
      * @return string
      */
-    private function _parseIn(string $field, string $cond, $value, string $type){
+    private function _parseIn(string $field, string $cond, $value, ?string $type = null){
 
         if($value instanceof \sys\db\SubQuery){
             $this->_appendParams($value->getParams());
@@ -80,7 +80,7 @@ class SqlBuilder {
         }
         if(is_array($value)){
             foreach ($value as $i=>$item) {
-                $this->_params[] = $this->_parseValue($item, $type);
+                $this->_params[] = $this->_parseValue($item, $type ?? gettype($item));
             }
 
             return "`{$field}` {$cond} (" . substr(str_repeat(',?', count($value)), 1) . ')';
@@ -148,8 +148,6 @@ class SqlBuilder {
 
         $field = $fieldParts[ count($fieldParts) - 1];
 
-        $type = $this->_types[ $field ] ?? gettype($exp[2]);
-
         switch($cond){
         case '=':
         case '<>':
@@ -157,20 +155,24 @@ class SqlBuilder {
         case '<':
         case '>=':
         case '<=':
+            $type = $this->_types[ $field ] ?? gettype($exp[2]);
             return $this->_parseEq($field, $cond, $exp, $type);
         case 'LIKE':
             return $this->_parseEq($field, $cond, $exp, 'string');
         case 'IN':
         case 'NOT IN':
-            return $this->_parseIn($field, $cond, count($exp) >=3? $exp[2] : null, $type);
+            $type = $this->_types[ $field ] ?? null;
+            return $this->_parseIn($field, $cond, $exp[2], $type);
         case 'IS':
             return "`{$fullFieldName}` is NULL";
         case 'IS NOT':
             return "`{$fullFieldName}` is NOT NULL";
             break;
         case 'BETWEEN':
+            $type = $this->_types[ $field ] ?? gettype($exp[2]);
             return $this->_parseBetween($exp[2], $type);
         case 'EXP':
+            $type = $this->_types[ $field ] ?? gettype($exp[2]);
             return $this->_parseExp(array_slice($exp, 2), $type);
         default:
             throw new Exception('无法识别的表达式: \"'. $cond . '\"');
