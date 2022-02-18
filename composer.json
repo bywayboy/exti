@@ -1,8 +1,15 @@
 {
     "name": "bywayboy/exti",
+    "description": "",
     "type": "project",
-    "license": "1.0",
-
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "bywayboy",
+            "email": "bywayboy@qq.com",
+            "homepage": "https://book.exti.cc"
+        }
+    ],
     "autoload": {
         "files": [
             "sys/helpers/functions.php"
@@ -10,7 +17,7 @@
         "psr-4": {
             "app\\": "app",
             "sys\\": "sys",
-            "rpc\\": "rpc"
+            "lib\\": "lib"
         }
     },
     "require": {

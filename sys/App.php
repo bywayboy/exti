@@ -39,7 +39,7 @@ class App {
         $wg->add();
         Coroutine::create(function () use($wg, $module, $serverId, $workerId){
             try{
-                $class = "\\app\\{$module}\\BootStarup";
+                $class = "\\lib\\{$module}\\BootStarup";
                 call_user_func_array([$class, 'onWorkerStart'], [$serverId, $workerId]);
             }catch(Throwable $e){
                 echo 'ERROR: ' . $e->getMessage() . "\n";
