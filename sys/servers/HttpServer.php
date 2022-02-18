@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace sys\servers;
 
+use JsonSerializable;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 
@@ -65,10 +66,10 @@ class HttpServer {
                     if(null === $ret){
                         $response->end('');
                     }else{
-                        if($ret instanceof \sys\servers\http\Response){
+                        if($ret instanceof \sys\servers\http\Resp){
                             $ret->output($response);
                         }else{
-                            if(is_array($ret)){
+                            if(is_array($ret) || $ret instanceof JsonSerializable){
                                 $response->header('Conent-Type', 'application/json');
                                 $response->end(json_encode($ret,JSON_UNESCAPED_UNICODE));
                             }elseif(is_string($ret)){

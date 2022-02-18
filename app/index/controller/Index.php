@@ -12,16 +12,14 @@ class Index {
 <html>
 <title>框架测试</title>
 <body>
-    <div style="height:80%;width:100%;">进程数:2, 运行正常</div>
-    <div style="text-align:center;"><a href="https://beian.miit.gov.cn">湘ICP备2021015331号-1</a>
-    </div>
+    <div style="height:80%;width:100%;">运行正常</div>
 </body>
 </html>');
     }
 
     public function test(Request $r, Response $e){
         $check1 = validate([
-            'username|性敏感'=>'require',
+            'username|姓名'=>'require',
             'profile|资料'=>'require|array',
             'profile.avatar'=>'require'
         ])->check(['username'=>'boy'],true);

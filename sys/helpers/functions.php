@@ -20,14 +20,13 @@ function isWebSocket(\Swoole\Http\Request $req){
 
 function json($msg, int $status = 200, string $mime='application/json; charset=utf-8')
 {
-    return new \sys\servers\http\JsonResponse($msg, $status, $mime);
+    return new \sys\servers\http\Json($msg, $status, $mime);
 }
 
 function html(string $msg, int $status = 200)
 {
-    return new \sys\servers\http\HtmlResponse($msg, $status);
+    return new \sys\servers\http\Html($msg, $status);
 }
-
 
 /**
  * WebSocket 连接握手
