@@ -11,11 +11,17 @@ use sys\Log;
 
 class HttpServer {
     protected \Swoole\Coroutine\Http\Server $server;
-
+    
+    /**
+     * @param array $config 当前模块配置 来自 \config\app.php
+     * @param string $module 模块名称
+     * @param int $workerId 工作进程ID 0~n
+     */
     public function __construct(array $config, string $module, int $workerId)
     {
         $sharePort = $config['share_port'];
         $listenPort = $sharePort ? $config['listen_port'] : $config['listen_port'] + $workerId;
+
         $this->server = new \Swoole\Coroutine\Http\Server($config['bind_address'], $listenPort, $config['ssl'], $sharePort);
 
         # TODO: 开启了SSL的话, 需要进一步设置证书

@@ -6,15 +6,22 @@ CURPATH=$(pwd)
 
 PHP_VERSION=`/usr/local/php/bin/php -v | grep "^PHP [0-9]" | cut -c 5-7`
 
-function CheckEnvConfig() {
+# 服务器必须设置的环境变量
+ENV_SECTIONS=("SERVER_NAME" "SERVER_TYPE" "SERVER_ID" "CPUS" "BIND_ADDRESS" "LISTEN_PORT" "GATE_DOMAIN" "GATE_ADDR" "GATE_PORT" "GATE_USE_SSL")
 
+# 服务器必须存在的扩展
+PHP_EXTENSIONS=("swoole.so" "doin.so" "pdo_mysql.so" "exif.so")
+
+
+function CheckEnvConfig() {
     if [ ! -f $CURPATH/scripts/.env ]; then
         echo -e "\033[31m[ERROR] 请先创建环境变量配置文件. scripts/.env \033[0m"
         return 1;
     fi
+    
     echo -e "\033[32m===================== 开始检查配置 =====================\033[0m"
     # 检查服务配置
-    ENV_SECTIONS=("SERVER_NAME" "SERVER_TYPE" "SERVER_ID" "CPUS" "BIND_ADDRESS" "LISTEN_PORT" "GATE_DOMAIN" "GATE_ADDR" "GATE_PORT" "GATE_USE_SSL")
+    
     CHECK_PASS=true
     for SECTION_NAME in ${ENV_SECTIONS[@]}
     do
@@ -34,8 +41,6 @@ function CheckEnvConfig() {
 }
 
 function CheckPHPConfig() {
-
-    PHP_EXTENSIONS=("swoole.so" "doin.so" "pdo_mysql.so" "exif.so")
     CHECK_PASS=true
     echo -e "\033[32m==================== 开始检PHP查配置 ====================\033[0m"
     echo -e "\033[34m[NOTICE] PHP配置文件: ${PHP_CONFIG_FILE} \033[0m"
@@ -78,20 +83,7 @@ if [ 0 = $? ]; then
     sed -i 's#memory_limit = .*#memory_limit = -1#' ${PHP_CONFIG_FILE}
 
     case ${PHP_VERSION} in
-        "7.0"|"7.1"|"7.2"|"7.3"|"7.4")
-            echo -e "\033[32m[PASS] 当前PHP版本是 PHP-${PHP_VERSION} 将开启Opcache\033[0m"
-
-            # 开启opcache加速            
-            sed -i 's#[;]*opcache.enable=.*#opcache.enable=1#' ${PHP_CONFIG_FILE}
-            sed -i 's#[;]*opcache.enable_cli=1#opcache.enable_cli=1#' ${PHP_CONFIG_FILE}
-
-            # 文件更新检测 0 每次都检测, > 0 定期检查
-            sed -i 's#[;]*opcache.validate_timestamps=0#;opcache.validate_timestamps=0#' ${PHP_CONFIG_FILE}
-            sed -i 's#[;]*opcache.max_accelerated_files=0#;opcache.max_accelerated_files=65536#' ${PHP_CONFIG_FILE}
-            # 间隔300秒
-            #sed -i 's#;opcache.revalidate_freq=0#;opcache.revalidate_freq=300#' ${PHP_CONFIG_FILE}
-        ;;
-        "8.0"|"8.1"|"8.2")
+        "8.1"|"8.2")
             echo -e "\033[32m[PASS] 当前PHP版本是 PHP-${PHP_VERSION}. 将开启Opcache+JIT\033[0m"
             # 开启opcache加速, 开启Jit
             sed -i 's#[;]*opcache.enable=.*#opcache.enable=1#' ${PHP_CONFIG_FILE}
@@ -229,6 +221,11 @@ RestrictNamespaces=true
 WantedBy=multi-user.target
 
 EOF
+
+if [ ! -d "${CURPATH}/var" ]; then
+    mkdir -p ${CURPATH}/var
+    chown -R php:www ${CURPATH}/var
+fi
 
 systemctl daemon-reload
 

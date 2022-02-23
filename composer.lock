@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "92c86a6956cd99f870be5d2e0a5181b0",
+    "content-hash": "5014898b3b498b556e880111cb207a5e",
     "packages": [
         {
             "name": "swoole/ide-helper",
-            "version": "4.8.6",
+            "version": "4.8.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/swoole/ide-helper.git",
-                "reference": "b277ed171a29f7bbce1c5feee5581553101e06bf"
+                "reference": "62d306dcfdb7c2cd21768386955af9de387163f9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/swoole/ide-helper/zipball/b277ed171a29f7bbce1c5feee5581553101e06bf",
-                "reference": "b277ed171a29f7bbce1c5feee5581553101e06bf",
+                "url": "https://api.github.com/repos/swoole/ide-helper/zipball/62d306dcfdb7c2cd21768386955af9de387163f9",
+                "reference": "62d306dcfdb7c2cd21768386955af9de387163f9",
                 "shasum": ""
             },
             "type": "library",
@@ -34,7 +34,7 @@
             "description": "IDE help files for Swoole.",
             "support": {
                 "issues": "https://github.com/swoole/ide-helper/issues",
-                "source": "https://github.com/swoole/ide-helper/tree/4.8.6"
+                "source": "https://github.com/swoole/ide-helper/tree/4.8.7"
             },
             "funding": [
                 {
@@ -46,7 +46,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2022-01-11T17:42:26+00:00"
+            "time": "2022-02-23T01:04:01+00:00"
         }
     ],
     "packages-dev": [],
@@ -57,5 +57,5 @@
     "prefer-lowest": false,
     "platform": [],
     "platform-dev": [],
-    "plugin-api-version": "2.1.0"
+    "plugin-api-version": "2.2.0"
 }

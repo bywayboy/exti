@@ -7,6 +7,6 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'sys\\' => array($baseDir . '/sys'),
-    'rpc\\' => array($baseDir . '/rpc'),
+    'lib\\' => array($baseDir . '/lib'),
     'app\\' => array($baseDir . '/app'),
 );
