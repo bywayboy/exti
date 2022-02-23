@@ -104,7 +104,7 @@ class Helpers
 
         if(!empty($result)){
             \sys\Config::set('tables_gen', $result);
-            \sys\Config::store('tables_gen');
+            \sys\Config::save('tables_gen');
         }
     }
 }

@@ -6,68 +6,98 @@ declare(strict_types=1);
  * 日期: 2021-09-18
  */
 namespace sys;
-
+/**
+ * 配置读写类
+ * @method void set(string $name) static
+ * @method mixed get(string $name, mixed $default) static
+ * @method void save(string $name) static
+ */
 class Config{
-    private static array $config = [];
-    private static function cache(string $name, $value) :void {
+    protected static array $config = [];
+
+    protected static function cache(string $name, $value) :void {
         static::$config[$name] = $value;
     }
 
-    
-    public static function Clear(): void{
-        static::$config = [];
-    }
-
-    public static function get(string $name = 'app', array $default = []) : array
-    {
-        $parts  = explode('.', $name);
-        if(empty($parts)){
-            return $default;
-        }
-
-        $name = array_shift($parts);
-        if(empty(static::$config[$name])){
+    protected static function root(string $name) {
+        if(empty(self::$config[$name])){
             $file = APP_ROOT."/config/{$name}.php";
 
             if(\is_file($file)){
-                static::cache($name, include $file);
+                self::cache($name, include $file);
             }else{
-                echo "Load Config Failed!!! {$file}\n";
-                static::cache($name, []);
+                self::cache($name, []);
             }
         }
-        
-        $cfg = static::$config[$name];
-        foreach($parts as $key){
-            if(isset($cfg[$key])){
-                $cfg = $cfg[$key];
-            }else{
-                $cfg = $default;
-            }
-        }
-        return $cfg;
     }
 
-    private static function _set($config, array $parts, $value) : array{
-        $key = array_shift($parts);
-        if(count($parts) > 0){
-            $config[$key] = static::_set($config[ $key ] ?? [], $parts, $value);
-        }else{
-            $config[$key] = $value;
+    /**
+     * 清理配置缓存, 会强制重新从文件中读取配置.
+     */
+    public static function clear(?string $name = null): void {
+        if(null === $name)
+            static::$config = [];
+        else
+            unset(static::$config[$name]);
+    }
+
+    /**
+     * 读取配置
+     */
+    public static function get(string $pname = 'app', mixed $default = null)
+    {
+        $parts  = explode('.', $pname);
+        if(empty($parts))
+            return $default;
+
+        $first = array_shift($parts);
+        static::root($first);
+        $config = static::$config[$first];
+        if(!empty($parts)){
+            foreach($parts as $name){
+                if(!isset($config[$name])){
+                    return $default;
+                }
+                $config = $config[$name];
+            }
         }
         return $config;
     }
 
-    public static function set(string $name, array $value = [])
+    /**
+     * 设置配置项
+     * @access public
+     * @param string $name 配置项名称
+     * @param mixed $value 配置值
+     * @return void
+     */
+    public static function set(string $name, mixed $value) : void
     {
         // 1. 读取原始配置
         $parts  = explode('.', $name);
+        $first = array_shift($parts);
         if(count($parts) > 0){
-            static::$config = static::_set(static::$config, $parts, $value);
+            static::root($first);
+            $config = &static::$config[$first];
+
+            $last = array_pop($parts);
+            if(!empty($parts)){
+                foreach($parts as $name){
+                    if(!isset($config[$name]))
+                        $config[$name] = [];
+                    $config = &$config[ $name ];
+                }
+            }
+            $config[$last] = $value;
+            return;
         }
+        static::$config[$first] = $value;
     }
 
-    public static function var_export_short($var, $indent="") : string {
+    /**
+     * 将PHP变量生成PHP代码
+     */
+    private static function var_export_short(mixed $var, string $indent="") : string {
         switch (gettype($var)) {
             case "string":
                 return '\'' . addcslashes($var, "\\\$\"\r\n\t\v\f") . '\'';
@@ -87,9 +117,12 @@ class Config{
         }
     }
     /**
-     * 
+     * 将内存中的配置持久化存储到磁盘中.
+     * @access public
+     * @param string $name 配置名称
+     * @return void
      */
-    public static function store(string $name) :void {
+    public static function save(string $name) :void {
 
         $file = APP_ROOT."/config/". $name . '.php';
 

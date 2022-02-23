@@ -28,11 +28,15 @@ class App {
         $process->wait(true);
 
         # 清理配置.
-        Config::Clear();
+        Config::clear();
     }
 
     /**
      * 在工作进程创建之初执行.
+     * @access private
+     * @param string $module 模块名称
+     * @param int $serverId 服务器ID
+     * @param int $workerId 进程ID
      */
     private static function beforeWorkerStart(string $module, int $serverId, int $workerId):void {
         $wg = new WaitGroup();
@@ -50,7 +54,9 @@ class App {
     }
 
     /**
-     *   应用程序入口
+     * 应用程序入口
+     * @access public
+     * @return void
      */
     public static function execute()
     {

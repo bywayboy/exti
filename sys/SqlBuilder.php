@@ -30,13 +30,6 @@ class SqlBuilder {
         'null'      => \PDO::PARAM_NULL,
     ];
     protected static $tjson_ = ['json'=>true,'array'=>true,'object'=>true];
-    /**
-     * 服务器断线标识字符, 出现一错误代表连接无法再使用了.
-     * @var array
-     */
-    protected static $breakMatchStr = [
-        
-    ];
 
     public function __construct(\sys\Db $db, string $table, array $types)
     {
@@ -389,7 +382,12 @@ class SqlBuilder {
         return implode('', $sql_parts);
     }
 
-    public function deleteSql() : string {
+    /**
+     * 构造删除记录SQL, 用于 PDO
+     * @access private
+     * @return string 返回Sql语句
+     */
+    private function deleteSql() : string {
         $sql_parts = ['DELETE FROM `', $this->_table, '` WHERE '];
 
         if(empty($this->_where)){
@@ -401,7 +399,12 @@ class SqlBuilder {
         return implode('', $sql_parts);
     }
 
-
+    /**
+     * 插入一条记录到数据库中
+     * @access public
+     * @param array $data 要插入到数据
+     * @return ?int 成功返回 1 失败返回 null
+     */
     public function insert(array $data) : ?int
     {
         $sql = $this->insertSql($data);
@@ -411,6 +414,11 @@ class SqlBuilder {
         return null;
     }
 
+    /**
+     * 查找符合条件的单条记录
+     * @access public
+     * @return ?array 成功返回符合条件的结果, 失败或者未找到返回 null;
+     */
     public function find() : ?array {
         $sql = $this->findSql();
         if(1 == $this->db->execute($sql, $this->_params, \sys\Db::SQL_FIND)){
@@ -419,6 +427,11 @@ class SqlBuilder {
         return null;
     }
 
+    /**
+     * 查找符合条件的记录
+     * @access public
+     * @return ?array 成功返回符合条件的结果, 失败或者未找到返回 null;
+     */
     public function select() : ? array {
         $sql = $this->selectSql();
         if(0 < $this->db->execute($sql, $this->_params, \sys\Db::SQL_SELECT)){
@@ -427,41 +440,52 @@ class SqlBuilder {
         return null;
     }
 
-    public function update($data = []) : ? int {
+    /**
+     * 修改符合条件的记录
+     * @access public
+     * @param array $data 要修改的记录
+     * @return >int 成功返回被修改的记录数, 失败返回 null
+     */
+    public function update(array $data = []) : ? int {
         $sql = $this->updateSql($data);
         return $this->db->execute($sql, $this->_params, \sys\Db::SQL_UPDATE);
     }
 
+    /**
+     * 删除记录
+     * @access public
+     * @return ?int 成功返回被删除的记录数, 失败返回 null
+     */
     public function delete() : ?int {
         $sql = $this->deleteSql();
         return $this->db->execute($sql, $this->_params, \sys\Db::SQL_DELETE);
     }
 
-    # ==   缓存查询方法 用于字查询 或者 批量查询场合 ===
+    # ==   缓存查询方法 用于子查询 或者 批量查询场合 ===
 
-    public function cacheInsert($data = []) : \sys\db\SubQuery {
+    public function subInsert(array $data = []) : \sys\db\SubQuery {
         $sql = $this->insertSql($data);
         return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_INSERT);
     }
 
-    public function cacheSelect() :\sys\db\SubQuery {
+    public function subSelect() :\sys\db\SubQuery {
         $sql = $this->selectSql();
         return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_SELECT);
     }
 
-    public function cacheFind() :\sys\db\SubQuery {
+    public function subFind() :\sys\db\SubQuery {
         $sql = $this->findSql();
         return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_FIND);
     }
 
-    public function cacheUpdate() :\sys\db\SubQuery {
-        $sql = $this->updateSql();
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_FIND);
+    public function subUpdate(array $data = []) :\sys\db\SubQuery {
+        $sql = $this->updateSql($data);
+        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_UPDATE);
     }
 
-    public function cacheDelete() : \sys\db\SubQuery {
+    public function subDelete() : \sys\db\SubQuery {
         $sql = $this->deleteSql();
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_FIND);
+        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_DELETE);
     }
 
 }

@@ -168,7 +168,6 @@ if(!function_exists('LoadEnvironmentFromFile')) {
             foreach($lines as $line){
                 $env = trim($line, "\r\n\t ");
                 if('' != $env && '#' != $env[0]){
-                    echo "setenv: {$env}\n";
                     putenv($env);
                 }
             }
