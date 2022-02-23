@@ -11,6 +11,8 @@ declare(strict_types=1);
 use Swoole\Http\Response;
 use Swoole\Http\Request;
 use Swoole\WebSocket\Frame;
+use sys\servers\http\Json;
+use sys\servers\http\Resp;
 
 // 判断一个请求是否是WebSocket
 function isWebSocket(\Swoole\Http\Request $req){
@@ -18,7 +20,7 @@ function isWebSocket(\Swoole\Http\Request $req){
     return !empty($h['upgrade']);
 }
 
-function json($msg, int $status = 200, string $mime='application/json; charset=utf-8')
+function json($msg, int $status = 200, string $mime='application/json; charset=utf-8') : Json
 {
     return new \sys\servers\http\Json($msg, $status, $mime);
 }
@@ -35,20 +37,32 @@ function html(string $msg, int $status = 200)
  * @param string WebSocket 服务类
  * @param int 队列尺寸.
  */
-function upgrade(Request $request, Response $response, string $class, int $queueSize = 8)
+function upgrade(Request $request, Response $response, string $class, int $queueSize = 8) : ?Resp
 {
+    
+    #  实例化对象
     try{
         $m = new $class();
         if(! ($m instanceof \sys\services\WebSocket)){
             return json(['success'=>false, 'message'=>'类 '.$class.' 必须派生自 \sys\websocket\WebSocket'], 401);
         }
 
-        if(false === $m->BeforeUpgrade($request)){
-            return json(['success'=>false, 'message'=>'error'], 401);
-        }
+        return $m->BeforeUpgrade($request, function() use($m, $request, $response) :?Resp{
+            # 第一步: 连接握手
+            if(false === $response->upgrade()){
+                return $m->OnUpgradeFailed();
+            }
+            # 第二步: 连接建立通知
+            $m->AfterConnected($request);
+            # 第三步: 执行WebScoket消息处理
+            $m->execute($response);
+        });
+        
     }catch(\Throwable $e){
         return json(['success'=>false, 'message'=>$e->getMessage(), 'trace'=>$e->getTrace()], 500);
     }
+    return null;
+    
 
     //接收协程
     //负责将客户端的请求映射
@@ -60,8 +74,6 @@ function upgrade(Request $request, Response $response, string $class, int $queue
             if($msg = $channel->pop(60)){
                 if(is_array($msg)){
                     $response->push(json_encode($msg, JSON_UNESCAPED_UNICODE));
-                }elseif(is_string($msg)){
-                    $response->push($msg);
                 }else{
                     $response->push($msg);
                 }
@@ -71,15 +83,6 @@ function upgrade(Request $request, Response $response, string $class, int $queue
                 break;
         }
     }, $channel, $response);
-
-    //连接握手
-    $response->upgrade();
-    //连接成功事件
-    try{
-        $m->AfterConnected();
-    }catch(\Throwable $e){
-        //TODO: 记录错误
-    }
 
     $pingnum = 0;
     while(true)
@@ -152,6 +155,7 @@ function upgrade(Request $request, Response $response, string $class, int $queue
     }catch(\Throwable $e){
         //TODO: 记录错误
     }
+    return null;
 }
 
 

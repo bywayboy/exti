@@ -66,8 +66,6 @@ class HttpServer {
             
             try{
                 $m = new $class;
-                //$m->isWebSocket = isWebSocket($request);
-
                 if($ret = $m->$method($request, $response)) {
                     if(null === $ret){
                         $response->end('');
