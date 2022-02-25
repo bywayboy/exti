@@ -11,20 +11,19 @@ use sys\services\JsonWebSocket;
  *  真正的 WebSocket业务类
  */
 
-class ServiceWs extends JsonWebSocket {
-
-    //WebSocket 连接断开后触发的事件
-    public function AfterClose(): void
+class ServiceWs {
+ 
+    # 收到事件 pwron
+    public function OnPwron(JsonWebSocket $ws, array $data)
     {
         
     }
+    
 
- 
-    // 收到事件
-    public function pwron(array $data)
-    {
+
+    # 连接断开事件
+    public function AfterClose(){
 
     }
-    
 }
 

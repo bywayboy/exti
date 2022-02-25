@@ -8,7 +8,7 @@ abstract class Resp {
     protected string $mime;
 
 
-    public function output(\Swoole\Http\Response $r)
+    public function output(\Swoole\Http\Response $r, ?array $conf = null) : void
     {
         if($this->status !== 200)
             $r->setStatusCode($this->status);

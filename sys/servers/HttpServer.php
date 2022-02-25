@@ -30,8 +30,13 @@ class HttpServer {
 
         }
 
+        $tpl = array_merge([
+            'root'=>dirname(SITE_ROOT) . "/app/{$module}/tpl",
+            'cache'=>dirname(SITE_ROOT) . "/var/cache/{$module}"
+        ], $config['tpl'] ?? []);
+        
         # 服务器请求路由映射
-        $this->server->handle('', function(Request $request, Response $response) use($module, $sharePort) {
+        $this->server->handle('', function(Request $request, Response $response) use($module, $tpl, $sharePort) {
             $ns = "\\app\\{$module}\\controller\\";
             
             $uri = $request->server['request_uri'];
@@ -63,34 +68,38 @@ class HttpServer {
                 break;
             }
             Log::write("[CALL] {$class}:{$method}", "APP","INFO");
-            
+
             try{
                 $m = new $class;
                 if($ret = $m->$method($request, $response)) {
-                    if(null === $ret){
-                        $response->end('');
-                    }else{
-                        if($ret instanceof \sys\servers\http\Resp){
-                            $ret->output($response);
-                        }else{
-                            if(is_array($ret) || $ret instanceof JsonSerializable){
-                                $response->header('Conent-Type', 'application/json');
-                                $response->end(json_encode($ret,JSON_UNESCAPED_UNICODE));
-                            }elseif(is_string($ret)){
-                                $response->end($ret);
-                            }
-                        }
+                    if($ret instanceof \sys\servers\http\Resp){
+                        $ret->output($response, $tpl);
+                        return;
+                    }
+                    if(is_array($ret) || $ret instanceof JsonSerializable){
+                        $response->header('Conent-Type', 'application/json');
+                        $response->end(json_encode($ret,JSON_UNESCAPED_UNICODE));
+                        return;
+                    }elseif(is_string($ret)){
+                        $response->header('Conent-Type', 'text/plain');
+                        $response->end($ret);
+                        return;
                     }
                 }
+                $response->setStatusCode(204);
+                $response->end();
             }catch(\Throwable $e){
                 $file = SITE_ROOT. $uri;
-                $response->header('Content-Type','text/plain');
+                $response->header('Content-Type','text/html');
                 $response->status(404);
+
                 $err = [
-                    'Error:'.$e->getMessage().' at file:'.$e->getFile().'('.$e->getLine().')',
-                    'Entry:' . $class, 
-                    "TraceBack:\n".$e->getTraceAsString(),
-                    //'mapping_file:'. SITE_ROOT.$request->server['request_uri']
+                    '<!DOCTYPE html>', '<html><head><title>404 Not Found</title><meta charset="utf-8"></head><body>',
+                    '<h3>ERROR: '.$e->getMessage(), '</h3><div>file:', 
+                    $e->getFile(), ' : ', $e->getLine().'</div>',
+                    '<div>Class: ', $class, '</div><pre style="line-height:150%;">',
+                    "TraceBack:", $e->getTraceAsString(),
+                    '</pre></body></html>'
                 ];
                 $response->end(\implode("\n", $err));
             }

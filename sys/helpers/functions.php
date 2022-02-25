@@ -13,6 +13,7 @@ use Swoole\Http\Request;
 use Swoole\WebSocket\Frame;
 use sys\servers\http\Json;
 use sys\servers\http\Resp;
+use sys\services\WebSocket;
 
 // 判断一个请求是否是WebSocket
 function isWebSocket(\Swoole\Http\Request $req){
@@ -32,130 +33,28 @@ function html(string $msg, int $status = 200)
 
 /**
  * WebSocket 连接握手
- * @param Swoole\Http\Request  连接请求对象
+ * @param \sys\services\WebSocket  连接请求对象
  * @param Swoole\Http\Response 连接响应对象
  * @param string WebSocket 服务类
  * @param int 队列尺寸.
  */
-function upgrade(Request $request, Response $response, string $class, int $queueSize = 8) : ?Resp
+function upgrade(Request $request, Response $response, string $service, $m) : bool
 {
     
     #  实例化对象
-    try{
-        $m = new $class();
-        if(! ($m instanceof \sys\services\WebSocket)){
-            return json(['success'=>false, 'message'=>'类 '.$class.' 必须派生自 \sys\websocket\WebSocket'], 401);
-        }
 
-        return $m->BeforeUpgrade($request, function() use($m, $request, $response) :?Resp{
-            # 第一步: 连接握手
-            if(false === $response->upgrade()){
-                return $m->OnUpgradeFailed();
-            }
-            # 第二步: 连接建立通知
-            $m->AfterConnected($request);
-            # 第三步: 执行WebScoket消息处理
-            $m->execute($response);
-        });
-        
-    }catch(\Throwable $e){
-        return json(['success'=>false, 'message'=>$e->getMessage(), 'trace'=>$e->getTrace()], 500);
+    if(!($service instanceof \sys\services\WebSocket)) {
+        return json(['success'=>false, 'message'=>'类 '.$service.' 必须派生自 \sys\websocket\WebSocket'], 401);
     }
-    return null;
-    
 
-    //接收协程
-    //负责将客户端的请求映射
-    $channel = new \Swoole\Coroutine\Channel($queueSize);
-    \Swoole\Coroutine::create(function(\Swoole\Coroutine\Channel $channel, Response $response)
-    {
-        while(true)
-        {
-            if($msg = $channel->pop(60)){
-                if(is_array($msg)){
-                    $response->push(json_encode($msg, JSON_UNESCAPED_UNICODE));
-                }else{
-                    $response->push($msg);
-                }
-                continue;
-            }
-            if($channel->errCode === SWOOLE_CHANNEL_CLOSED)
-                break;
-        }
-    }, $channel, $response);
-
-    $pingnum = 0;
-    while(true)
-    {
-        // 0x0 数据附加帧 0x01 文本数据帧 0x02 二进制帧 0x8 连接关闭 0x09 ping 0x0A pong 
-        $frame = $response->recv(60);
-        if($frame === ''){
-            $response->close();
-            break;
-        }
-
-        if($frame === false) {
-            $errno = swoole_last_error();
-            if(110 == $errno){
-                //超时了, 主动发送 ping
-                $frame = new Frame();
-                $frame->opcode = WEBSOCKET_OPCODE_PING;
-                $channel->push($frame);
-                $pingnum ++;
-                if($pingnum > 2){
-                    $response->close();
-                    break;
-                }
-                continue;
-            }
-            break;
-        }else{
-            $class = get_class($frame);
-            if($class === CloseFrame::class){
-                $response->close();
-                break;
-            }else{
-                switch($frame->opcode){
-                case WEBSOCKET_OPCODE_TEXT: //文本消息
-                    $data = json_decode($frame->data, true);
-                    if(array_key_exists('action', $data)){
-                        $action = $data['action'];
-                        try{
-                            if($m->methodNotAllowed($action))
-                            {
-                                $channel->push(['action'=>$action, 'success'=>false,'message'=>'action not allowed!', 'done'=>true]);
-                            }else{
-                                if(null !=($ret = $m->$action($data))){
-                                    $channel->push($ret);
-                                }
-                            }
-                        }catch(\Throwable $e){
-                            $channel->push(['success'=>false, 'action'=>$action, 'message'=>$e->getMessage(), 'trace'=>$e->getTrace()]);
-                        }
-                    }
-                    break;
-                case WEBSOCKET_OPCODE_BINARY: //二进制消息
-                    try{
-                        if(null !=($ret = $m->OnBinaryMessage($frame->data))){
-                            $channel->push($ret);
-                        }
-                    }catch(\Throwable $e){
-                        $channel->push(['success'=>false, 'message'=>$e->getMessage(), 'trace'=>$e->getTrace()]);
-                    }
-                    break;
-                case WEBSOCKET_OPCODE_PONG:
-                    $pingnum = 0;
-                    break;
-                }
-            }
-        }
+    # 第一步: 连接握手
+    if(false === $response->upgrade()){
+        # 连接建立失败
+        return false;
     }
-    try{
-        $m->AfterClose();
-    }catch(\Throwable $e){
-        //TODO: 记录错误
-    }
-    return null;
+    $s = new $service($m);
+    $s->execute();
+    return true;
 }
 
 
