@@ -34,7 +34,7 @@ class View extends Resp
         try{
             include $tplc['root'] . '/' .$this->file;
         }catch(Throwable $e){
-            echo 'Error: '.$e->getMessage();
+            echo '<p>Error: '.$e->getMessage() . ' at file: ' .$e->getFile() . '('. $e->getLine().')</p>';
         }
         $this->content = ob_get_clean();
         parent::output($r);
