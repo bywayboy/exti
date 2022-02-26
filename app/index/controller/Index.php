@@ -46,7 +46,7 @@ class Index {
 
     public function tpl(Request $request, Response $response) {
         # 测试原生模板支持
-        return new View('index/tpl.php', [
+        return view('index/tpl.php', [
             'title'=>'页面标题',
             'vars'=>[
                 'username'=>'bywayboy',

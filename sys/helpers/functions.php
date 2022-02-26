@@ -12,7 +12,8 @@ use Swoole\Http\Response;
 use Swoole\Http\Request;
 use Swoole\WebSocket\Frame;
 use sys\servers\http\Json;
-use sys\servers\http\Resp;
+use sys\servers\http\Html;
+use sys\servers\http\View;
 use sys\services\WebSocket;
 
 // 判断一个请求是否是WebSocket
@@ -21,40 +22,55 @@ function isWebSocket(\Swoole\Http\Request $req){
     return !empty($h['upgrade']);
 }
 
-function json($msg, int $status = 200, string $mime='application/json; charset=utf-8') : Json
-{
-    return new \sys\servers\http\Json($msg, $status, $mime);
+if(!function_exists('json')) {
+    function json($msg, int $status = 200, string $mime='application/json; charset=utf-8') : Json
+    {
+        return new Json($msg, $status, $mime);
+    }
 }
 
-function html(string $msg, int $status = 200)
-{
-    return new \sys\servers\http\Html($msg, $status);
+if(!function_exists('html')) {
+    function html(string $msg, int $status = 200) : Html
+    {
+        return new Html($msg, $status);
+    }
 }
 
 /**
- * WebSocket 连接握手
- * @param \sys\services\WebSocket  连接请求对象
- * @param Swoole\Http\Response 连接响应对象
- * @param string WebSocket 服务类
- * @param int 队列尺寸.
+ * 返回一个模板渲染对象
+ * @param string $tpl 模板文件
+ * @param mixed $vars 变量
+ * @return View 模板视图对象
  */
-function upgrade(Request $request, Response $response, string $service, $m) : bool
-{
-    
-    #  实例化对象
+function view(string $tpl, mixed $vars) : View {
+    return new View($tpl, $vars);
+}
 
-    if(!($service instanceof \sys\services\WebSocket)) {
-        return json(['success'=>false, 'message'=>'类 '.$service.' 必须派生自 \sys\websocket\WebSocket'], 401);
-    }
+if(!function_exists('upgrade')) {
+    /**
+     * WebSocket 连接握手
+     * @param \sys\services\WebSocket  连接请求对象
+     * @param Swoole\Http\Response 连接响应对象
+     * @param string WebSocket 服务类
+     * @param int 队列尺寸.
+     */
+    function upgrade(Request $request, Response $response, string $service, $m) : bool
+    {
+        
+        #  实例化对象
+        if(!($service instanceof \sys\services\WebSocket)) {
+            return json(['success'=>false, 'message'=>'类 '.$service.' 必须派生自 \sys\websocket\WebSocket'], 401);
+        }
 
-    # 第一步: 连接握手
-    if(false === $response->upgrade()){
-        # 连接建立失败
-        return false;
+        # 第一步: 连接握手
+        if(false === $response->upgrade()){
+            # 连接建立失败
+            return false;
+        }
+        $s = new $service($request, $m);
+        $s->execute();
+        return true;
     }
-    $s = new $service($m);
-    $s->execute();
-    return true;
 }
 
 

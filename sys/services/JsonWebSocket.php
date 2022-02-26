@@ -4,16 +4,16 @@ declare(strict_types=1);
 namespace sys\services;
 
 use Swoole\Http\Request;
-use Swoole\Http\Response;
-use Swoole\WebSocket\CloseFrame;
-use Swoole\WebSocket\Frame;
 use Throwable;
 
 class JsonWebSocket extends WebSocket
 {
     protected $service;
-    public function __construct(mixed $service)
+    protected Request $request;
+    
+    public function __construct(Request $request, mixed $service)
     {
+        $this->request = $request;
         $this->service = $service;
     }
 

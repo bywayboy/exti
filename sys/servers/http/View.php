@@ -23,6 +23,16 @@ class View extends Resp
         $this->mime = $mime;
         $this->status = $status;
     }
+    /**
+     * 绑定一个变量到将要渲染的模板中
+     * @access public
+     * @param string $name 变量名称
+     * @param mixed $var 变量值
+     * @return void
+     */
+    public function assign(string $name, mixed $var) : void {
+        $this->vars[$name] = $var;
+    }
 
     public function output(Response $r, ?array $tplc = null) : void
     {
