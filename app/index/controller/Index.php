@@ -41,7 +41,7 @@ class Index {
     }
 
     public function noret(Request $request, Response $response)  {
-        echo "no ret called\n";
+        $i = 100 / 0;
     }
 
     public function tpl(Request $request, Response $response) {

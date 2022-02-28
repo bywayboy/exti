@@ -7,8 +7,6 @@ use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\WebSocket\CloseFrame;
 use Swoole\WebSocket\Frame;
-use sys\servers\http\Resp;
-use sys\SysEvents;
 
 abstract class WebSocket {
     
@@ -18,7 +16,12 @@ abstract class WebSocket {
 
     protected ?\Swoole\Coroutine\Channel $channel = null;
 
+    /**
+     * WebSocket 连接成功
+     */
+    protected function afterConnected(Request $request){
 
+    }
     /**
      * WebSocket 连接断开
      **/

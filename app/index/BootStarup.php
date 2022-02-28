@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace lib\index;
+namespace app\index;
 
 class BootStarup {
     /**
@@ -9,7 +9,7 @@ class BootStarup {
      * @param int $serveId 服务器ID
      * @param int $workerId 工作进程ID: 0~n
      */
-    public static function onWorkerStart(int $serverId, int $workerId)
+    public static function onWorkerStart(int $serverId, int $workerId) : void
     {
         echo "Worker BootStrap {$serverId}, {$workerId}\n";
     }

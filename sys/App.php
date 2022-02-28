@@ -43,7 +43,7 @@ class App {
         $wg->add();
         Coroutine::create(function () use($wg, $module, $serverId, $workerId){
             try{
-                $class = "\\lib\\{$module}\\BootStarup::onWorkerStart";
+                $class = "\\app\\{$module}\\BootStarup::onWorkerStart";
                 call_user_func_array($class, [$serverId, $workerId]);
             }catch(Throwable $e){
                 echo 'ERROR: ' . $e->getMessage() . "\n";
@@ -67,6 +67,8 @@ class App {
         ini_set('serialize_precision', '15'); # json 浮点设置
 
         $pm = new \Swoole\Process\Manager();
+
+        
         foreach($modules_conf as $module=>$config) {
             if($config['enabled']) {
                 $pm->addBatch($config['worker_num'], function($pool, $workerId) use ($module, $config) {

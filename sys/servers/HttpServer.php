@@ -8,6 +8,7 @@ use Swoole\Http\Request;
 use Swoole\Http\Response;
 
 use sys\Log;
+use sys\servers\http\View;
 
 class HttpServer {
     protected \Swoole\Coroutine\Http\Server $server;
@@ -43,22 +44,28 @@ class HttpServer {
             \preg_match_all("#\/([\-\w\d_]+)*#i", strtolower($uri) , $matches);
             $psr  = array_filter($matches[1]);
 
-            if(!$sharePort){
-                $node = array_shift($psr);
+            # 非共享端口模式 路径第一段是 workerId
+            if(!$sharePort) {
+                array_shift($psr);
             }
+
             $num = count($psr);
 
             switch($num){
             case 0:
+                # 默认映射到 Index::index
                 $class = $ns.'Index';
                 $method = 'index';
                 break;
             case 1:
+                # 只有一个类名 默认映射到 index 方法
                 $class = $ns.ucfirst(array_pop($psr));
                 $method = 'index';
                 break;
             default:
+                # 最后一个方法名
                 $method = array_pop($psr);
+                # 剩下的是路径.
                 $class = ucfirst(array_pop($psr));
                 if(empty($psr)){
                     $class = $ns.$class;
@@ -70,29 +77,43 @@ class HttpServer {
             Log::write("[CALL] {$class}:{$method}", "APP","INFO");
 
             try{
-                $m = new $class;
+                $m = new $class();
                 if($ret = $m->$method($request, $response)) {
                     if($ret instanceof \sys\servers\http\Resp){
                         $ret->output($response, $tpl);
                         return;
                     }
+
                     if(is_array($ret) || $ret instanceof JsonSerializable){
                         $response->header('Conent-Type', 'application/json');
                         $response->end(json_encode($ret,JSON_UNESCAPED_UNICODE));
                         return;
-                    }elseif(is_string($ret)){
+                    }elseif(is_string($ret)) {
                         $response->header('Conent-Type', 'text/plain');
                         $response->end($ret);
                         return;
                     }
                 }
+                # 无任何返回的时候 返回204 状态
                 $response->setStatusCode(204);
                 $response->end();
             }catch(\Throwable $e){
                 $file = SITE_ROOT. $uri;
                 $response->header('Content-Type','text/html');
                 $response->status(404);
-
+                $view = new View('sys/servers/http/tpl/error.php', [
+                    'title'=>'发生错误',
+                    'message'=>$e->getMessage(),
+                    'file'=>substr($e->getFile(), strlen(dirname(SITE_ROOT)) + 1),
+                    'class'=>$class,
+                    'type'=>$e::class,
+                    'line'=>$e->getLine(),
+                    'trace'=>$e->getTraceAsString()
+                ]);
+                $view->output($response,[
+                    'root'=>dirname(SITE_ROOT),
+                ]);
+                /*
                 $err = [
                     '<!DOCTYPE html>', '<html><head><title>404 Not Found</title><meta charset="utf-8"></head><body>',
                     '<h3>ERROR: '.$e->getMessage(), '</h3><div>file:', 
@@ -102,6 +123,7 @@ class HttpServer {
                     '</pre></body></html>'
                 ];
                 $response->end(\implode("\n", $err));
+                */
             }
         });
     }

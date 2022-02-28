@@ -57,7 +57,7 @@ if(!function_exists('upgrade')) {
     function upgrade(Request $request, Response $response, string $service, $m) : bool
     {
         
-        #  实例化对象
+        # 实例化对象
         if(!($service instanceof \sys\services\WebSocket)) {
             return json(['success'=>false, 'message'=>'类 '.$service.' 必须派生自 \sys\websocket\WebSocket'], 401);
         }
@@ -136,5 +136,46 @@ if(!function_exists('array_is_list')){
             $expectedKey++;
         }
         return true;
+    }
+}
+
+
+if(!function_exists('http_post'))
+{
+    /**
+     * 发起一个HTTP Post 请求.
+     * @param string $url 请求资源地址.
+     * @param string $payload POST 的内容
+     * @param null|array $headers HTTP协议头部信息
+     * @param int $timeout 超时时间
+     * @param  null|array $certs 证书 需包含2个成员 ssl_cert_file, ssl_key_file
+     * @return array return_code 错误码 0 成功, code http返回状态码, url 请求的url, body 返回内容.
+     */
+    function http_post(string $url, string $payload, ?array $headers = null, int $timeout = 30, ?array $certs = null){
+        $parts = parse_url($url);
+        $port = $parts['port'] ?? ('https' == $parts['scheme']?443:80);
+        $http = new \Swoole\Coroutine\Http\Client($parts['host'], $port, 'https' == $parts['scheme']);
+
+        
+        $http->set(array_merge([
+            'timeout'=>$timeout,
+            'keep_alive'=>false,
+            'open_ssl'=>'https'==$parts['scheme']
+        ], $certs ?? []));
+
+        $http->setMethod('POST');
+        $http->setData($payload);
+        
+        if(null !== $headers)
+            $http->setHeaders($headers);
+
+        if(false !== $http->execute(substr($url, \strpos($url, $parts['path'])))){
+            $http->close();
+            $result = ['url'=>$url, 'code'=>$http->getStatusCode(),'body'=>$http->getBody(),'return_code'=>0];
+        }else{
+            $result = ['url'=>$url, 'code'=>0, 'return_code'=>$http->errCode];
+        }
+
+        return $result;
     }
 }

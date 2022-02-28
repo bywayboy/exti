@@ -32,6 +32,14 @@ class JsonWebSocket extends WebSocket
 
     }
 
+    protected function afterConnected(Request $request){
+        try{
+            call_user_func_array([$this->service, 'afterConnected'], [$this, $request]);
+        }catch(Throwable $e){
+            # 忽略错误.
+        }
+    }
+
     protected function AfterClose(): void
     {
         try{

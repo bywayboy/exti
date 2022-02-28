@@ -18,10 +18,14 @@ class ServiceWs {
     {
         
     }
-    
 
 
-    # 连接断开事件
+    # WS连接进入事件
+    public function afterConnected(JsonWebSocket $ws, Request $request) {
+        
+    }
+
+    # WS连接断开事件
     public function AfterClose(){
 
     }
