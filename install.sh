@@ -100,6 +100,17 @@ if [ 0 = $? ]; then
         ;;
     esac
 
+    echo -e "\033[32m[PASS] 创建热更新监控脚本: run.sh \033[0m"
+    cat <<EOF  > ${CURPATH}/scripts/watch_${SERVICE_NAME}.sh
+#!/bin/bash
+
+/usr/bin/inotifywait -rmq -e create,modify,delete --exclude '^.*(\.sh|\.log|\.txt|\.pid|tables_gen.php)$' ${CURPATH} | while read event
+do
+    echo "\${event}"
+    kill -SIGUSR1 \$(cat ${CURPATH}/var/${SERVICE_NAME}.pid)
+done
+EOF
+
     echo -e "\033[32m[PASS] 创建调试模式运行脚本: run.sh \033[0m"
     cat <<EOF > ${CURPATH}/run.sh
 #!/bin/bash
@@ -113,6 +124,16 @@ for ZPID in \${ZOMBE_PIDS}
 do
     kill -s 9 \${ZPID}
 done
+
+./scripts/watch_${SERVICE_NAME}.sh &
+
+trap 'onCtrlC' INT
+trap 'onCtrlC' SIGHUP
+
+function onCtrlC () {
+    echo "Clean...";
+    killall watch_${SERVICE_NAME}.sh inotifywait
+}
 
 ulimit -n 262140
 /usr/local/php/bin/php -c ${PHP_CONFIG_FILE} -f public/index.php cli ${SERVICE_NAME}
@@ -229,6 +250,7 @@ fi
 
 systemctl daemon-reload
 
+chmod a+x ${CURPATH}/scripts/watch_${SERVICE_NAME}.sh
 chmod a+x ${CURPATH}/restart.sh
 chmod a+x ${CURPATH}/run.sh
 chmod a+x ${CURPATH}/reload.sh
