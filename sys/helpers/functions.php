@@ -13,6 +13,7 @@ use Swoole\Http\Request;
 use Swoole\WebSocket\Frame;
 use sys\servers\http\Json;
 use sys\servers\http\Html;
+use sys\servers\http\Redirect;
 use sys\servers\http\View;
 use sys\services\WebSocket;
 
@@ -33,6 +34,15 @@ if(!function_exists('html')) {
     function html(string $msg, int $status = 200) : Html
     {
         return new Html($msg, $status);
+    }
+}
+
+if(!function_exists('redirect')){
+    /**
+     * 重定向到指定页面
+     */
+    function redirect(string $location, int $status = 302){
+        return new Redirect($location, $status);
     }
 }
 

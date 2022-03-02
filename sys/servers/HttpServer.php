@@ -36,11 +36,18 @@ class HttpServer {
             'cache'=>dirname(SITE_ROOT) . "/var/cache/{$module}"
         ], $config['tpl'] ?? []);
         
+        $rewrite = $config['rewrite'] ?? null;
+
         # 服务器请求路由映射
-        $this->server->handle('', function(Request $request, Response $response) use($module, $tpl, $sharePort) {
+        $this->server->handle('', function(Request $request, Response $response) use($module, $tpl, $rewrite, $sharePort) {
             $ns = "\\app\\{$module}\\controller\\";
-            
-            $uri = $request->server['request_uri'];
+
+            if($rewrite){
+                $uri = preg_replace($rewrite['patterns'], $rewrite['replacements'], $request->server['request_uri']);
+            }else{
+                $uri = $request->server['request_uri'];
+            }
+
             \preg_match_all("#\/([\-\w\d_]+)*#i", strtolower($uri) , $matches);
             $psr  = array_filter($matches[1]);
 
