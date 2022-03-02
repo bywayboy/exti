@@ -15,7 +15,7 @@ return [
             'protocol'      => \sys\servers\HttpServer::class,              # 服务器角色, 这是HTTP 服务器角色
             'ssl'           =>false,                                        # 是否启用SSL安全连接
             # 模板引擎配置
-            'tpl'           =>[
+            'tpl'           => [
                 # 这里是相对于站点根目录等路径
             ]
         ]
