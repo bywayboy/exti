@@ -227,3 +227,20 @@ if(!function_exists('http_get'))
          return $result;
      }
  }
+
+ if(!function_exists('crontab')){
+
+      /**
+       * 创建一个计划任务. 如果发生错误会抛出一个异常.
+       * @param string $every 执行间隔时间.
+       * @param string $at 确定执行时间.
+       * @param callable $exec 回调函数
+       * @param int $time 开始执行时间 默认为当前时间
+       * @return sys\CrontabTask 返回任务对象.
+       */
+     function crontab(string $every, string $at, callable $exec, int $time = 0) :\sys\CrontabTask{
+         if(0 == $time)
+             $time = time();
+        return new \sys\CrontabTask($time, $every, $at ,$exec);
+     }
+ }

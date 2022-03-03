@@ -48,7 +48,7 @@ class App {
                 call_user_func_array($class, [$serverId, $workerId]);
                 $crontab = Config::get('crontab', []);
                 foreach($crontab as $task){
-                    new CrontabTask($time, $task['every'], $task['at'] ?? '', $task['exec']);
+                    crontab($task['every'], $task['at'] ?? '', $task['exec'], $time);
                 }
             }catch(Throwable $e){
                 echo 'ERROR: ' . $e->getMessage() . "\n";
