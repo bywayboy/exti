@@ -42,9 +42,14 @@ class App {
         $wg = new WaitGroup();
         $wg->add();
         Coroutine::create(function () use($wg, $module, $serverId, $workerId){
+            $time = time();
             try{
                 $class = "\\app\\{$module}\\BootStarup::onWorkerStart";
                 call_user_func_array($class, [$serverId, $workerId]);
+                $crontab = Config::get('crontab', []);
+                foreach($crontab as $task){
+                    new CrontabTask($time, $task['every'], $task['at'] ?? '', $task['exec']);
+                }
             }catch(Throwable $e){
                 echo 'ERROR: ' . $e->getMessage() . "\n";
             }
