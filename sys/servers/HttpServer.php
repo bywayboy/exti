@@ -85,12 +85,13 @@ class HttpServer {
 
             try{
                 $m = new $class();
-                if($ret = $m->$method($request, $response)) {
+                $ret = $m->$method($request, $response);
+                if($ret) {
+                    if(true === $ret) return;
                     if($ret instanceof \sys\servers\http\Resp){
                         $ret->output($response, $tpl);
                         return;
                     }
-
                     if(is_array($ret) || $ret instanceof JsonSerializable){
                         $response->header('Conent-Type', 'application/json');
                         $response->end(json_encode($ret,JSON_UNESCAPED_UNICODE));

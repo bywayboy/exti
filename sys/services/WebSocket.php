@@ -38,7 +38,7 @@ abstract class WebSocket {
 
     }
 
-    public function execute(Response $response) : void {
+    public function execute(Response $response) : bool {
         $this->channel = new \Swoole\Coroutine\Channel($this->queue_size);
         \Swoole\Coroutine::create(function(Response $response)
         {
@@ -111,6 +111,7 @@ abstract class WebSocket {
 
         # 连接关闭事件
         $this->AfterClose();
+        return true;
     }
 
     public function close(){

@@ -19,6 +19,7 @@ class JsonWebSocket extends WebSocket
 
     protected function OnTextMessage_(string $text) : void {
         # 解码数据
+        echo "OnTextMessage_{$text}\n";
         $data = json_decode($text, true);
         # 将 action 映射到服务等方法去执行
         if(isset($data['action'])){

@@ -14,20 +14,20 @@ use sys\services\JsonWebSocket;
 class ServiceWs {
  
     # 收到事件 pwron
-    public function OnPwron(JsonWebSocket $ws, array $data)
+    public function OnLogin(array $data, JsonWebSocket $ws)
     {
-        
+        return ['action'=>'login', 'success'=>true,'message'=>'onLogin'];
     }
 
 
     # WS连接进入事件
     public function afterConnected(JsonWebSocket $ws, Request $request) {
-        
+        echo "After Connected...\n";
     }
 
     # WS连接断开事件
     public function AfterClose(){
-
+        echo "After Close...\n";
     }
 }
 

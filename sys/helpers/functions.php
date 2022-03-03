@@ -64,11 +64,10 @@ if(!function_exists('upgrade')) {
      * @param string WebSocket 服务类
      * @param int 队列尺寸.
      */
-    function upgrade(Request $request, Response $response, string $service, $m) : bool
+    function upgrade(Request $request, Response $response, string $service, string $m) : bool
     {
-        
         # 实例化对象
-        if(!($service instanceof \sys\services\WebSocket)) {
+        if(!is_subclass_of($service, \sys\services\WebSocket::class)) {
             return json(['success'=>false, 'message'=>'类 '.$service.' 必须派生自 \sys\websocket\WebSocket'], 401);
         }
 
@@ -77,8 +76,9 @@ if(!function_exists('upgrade')) {
             # 连接建立失败
             return false;
         }
-        $s = new $service($request, $m);
-        $s->execute();
+
+        $s = new $service($request, new $m);
+        $s->execute($response);
         return true;
     }
 }

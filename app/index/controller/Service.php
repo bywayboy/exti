@@ -9,6 +9,7 @@ use Swoole\Http\Response;
 use sys\services\JsonWebSocket;
 
 use app\index\ws\ServiceWs;
+use Throwable;
 
 class Service
 {
@@ -16,8 +17,15 @@ class Service
     public function index(Request $request, Response $response)
     {
         # 事务处理对象
-        $service = new ServiceWs();
-
-        return upgrade($request, $response, JsonWebSocket::class, $service);
+        try{
+            # 握手失败 直接返回
+            if(false === upgrade($request, $response, JsonWebSocket::class, ServiceWs::class)){
+                return json(['success'=>false,'message'=>'upgrade failed!']);
+            }
+           return true;
+        }catch(Throwable $e){
+            echo "error: ". $e->getMessage(). "\n";
+        }
+        return json(['success'=>false,'message'=>'error!!!!!']);
     }
 }
