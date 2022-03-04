@@ -320,7 +320,7 @@ class Db{
     }
 
     /** 执行批量查询 */
-    public function execute_multi(array $sqls) : int {
+    public function batch_execute(array $sqls) : int {
         $params = [];$sqlArr = [];
         foreach($sqls as $sql){
             if($sql instanceof SubQuery){
