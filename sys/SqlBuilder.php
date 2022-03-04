@@ -6,17 +6,19 @@ namespace sys;
 use Exception;
 
 class SqlBuilder {
-    protected $_table;          # 要构造SQL的表名
-    protected $_where = [];     # WHERE 条件数组
-    protected $_types = [];      # 字段类型表
-    protected $fields = [];     # 检索字段表 SELECT ...
-    protected $_update = [];    # 更新字段表 UPDATE 
-    protected $_join = [];      # 要关联的表名
-    protected $_order;          # 检索排序条件
-    protected $_lock;           # FOR UPDATE/LOCK IN SHARE MODE
-    protected array $_params = [];    # Sql 绑定参数
+    protected $_table;                  # 要构造SQL的表名
+    protected array $_where = [];       # WHERE 条件数组
+    protected array $_types = [];       # 字段类型表
+    protected array $fields = [];       # 检索字段表 SELECT ...
+    protected array $_update = [];      # 更新字段表 UPDATE 
+    protected array $_join = [];        # 要关联的表名
+    protected $_order;                  # 检索排序条件
+    protected $_lock;                   # FOR UPDATE/LOCK IN SHARE MODE
+    protected array $_params = [];      # Sql 绑定参数
+    protected array $_conds  = [];      # WHERE绑定参数
 
-    protected $db;
+    protected \sys\Db $db;
+
     /**
      * 参数绑定类型映射
      * @var array
@@ -29,6 +31,7 @@ class SqlBuilder {
         'boolean'   => \PDO::PARAM_BOOL,
         'null'      => \PDO::PARAM_NULL,
     ];
+
     protected static $tjson_ = ['json'=>true,'array'=>true,'object'=>true];
 
     public function __construct(\sys\Db $db, string $table, array $types)
@@ -38,9 +41,9 @@ class SqlBuilder {
         $this->_types = $types;
     }
 
-    private function _appendParams(array $pms){
+    private function _appendConds(array $pms){
         foreach($pms as $item){
-            $this->_params[] = $item;            
+            $this->_conds[] = $item;            
         }
     }
 
@@ -68,12 +71,12 @@ class SqlBuilder {
     private function _parseIn(string $field, string $cond, $value, ?string $type = null){
 
         if($value instanceof \sys\db\SubQuery){
-            $this->_appendParams($value->getParams());
+            $this->_appendConds($value->getParams());
             return "`{$field}` {$cond} (".$value->getSql().')';
         }
         if(is_array($value)){
             foreach ($value as $i=>$item) {
-                $this->_params[] = $this->_parseValue($item, $type ?? gettype($item));
+                $this->_conds[] = $this->_parseValue($item, $type ?? gettype($item));
             }
 
             return "`{$field}` {$cond} (" . substr(str_repeat(',?', count($value)), 1) . ')';
@@ -89,17 +92,17 @@ class SqlBuilder {
 
         if($from instanceof \sys\db\SubQuery){
             $parts[] = '('.$from->getSql().') AND ';
-            $this->_appendParams($from->getParams());
+            $this->_appendConds($from->getParams());
         }else{
-            $this->_params[] = $this->_parseValue($from, $type);
+            $this->_conds[] = $this->_parseValue($from, $type);
             $parts[] = '? AND ';
         }
 
         if($from instanceof \sys\db\SubQuery){
             $parts[] = '(' . $to->getSql().')';
-            $this->_appendParams($to->getParams());
+            $this->_appendConds($to->getParams());
         }else{
-            $this->_params[] = $this->_parseValue($to, $type);
+            $this->_conds[] = $this->_parseValue($to, $type);
             $parts[] = '?';
         }
         return implode('', $parts);
@@ -111,10 +114,10 @@ class SqlBuilder {
         $value = $exp[2];
         if($value === null) return "`{$field}` is NULL";
         if($value instanceof \sys\db\SubQuery){
-            $this->_appendParams($value->getParams());
+            $this->_appendConds($value->getParams());
             return "`{$field}` {$cond} (".$value->getSql().')';
         }
-        $this->_params[] = $this->_parseValue($value, $type);
+        $this->_conds[] = $this->_parseValue($value, $type);
         return "`{$field}` {$cond} ?";
     }
 
@@ -124,8 +127,8 @@ class SqlBuilder {
         $parts = [];
         foreach($values as $i=>$item){
             if($item instanceof \sys\db\SubQuery){
-                echo json_encode($this->_params)."\n";
-                $this->_appendParams($item->getParams());
+                # echo json_encode($this->_params)."\n";
+                $this->_appendConds($item->getParams());
                 $parts[] = '(' . $item->getSql() . ')';
             }else{
                 $parts[] = $item;
@@ -268,8 +271,13 @@ class SqlBuilder {
         return $this;
     }
 
-    public function limit(string $limit) :\sys\SqlBuilder {
-        $this->_limit = ' LIMIT ' . $limit;
+    public function limit(int $offset, ?int $num=null) :\sys\SqlBuilder {
+        if(null === $num){
+            $this->_limit = ' LIMIT ' . $offset;
+        }else{
+            $this->limit =  ' LIMIT ' . $offset . ', ' . $num;
+        }
+        
         return $this;
     }
 
@@ -356,6 +364,7 @@ class SqlBuilder {
             }
         }
         $sql_parts[] = \implode(',', $values);
+
         return implode('', $sql_parts);
     }
 
@@ -377,7 +386,8 @@ class SqlBuilder {
             $sql_parts[] = ' WHERE ';
             $sql_parts[] = implode('', $this->_where);
         }
-        $sql_parts[] = ' LIMIT 1';
+        
+        $sql_parts[] = $this->_limit ?? '';
 
         return implode('', $sql_parts);
     }
@@ -421,7 +431,7 @@ class SqlBuilder {
      */
     public function find() : ?array {
         $sql = $this->findSql();
-        if(1 == $this->db->execute($sql, $this->_params, \sys\Db::SQL_FIND)){
+        if(1 == $this->db->execute($sql, [...$this->_params, ...$this->_conds], \sys\Db::SQL_FIND)){
             return $this->db->result($this->_types, \sys\Db::SQL_FIND);
         }
         return null;
@@ -434,8 +444,8 @@ class SqlBuilder {
      */
     public function select() : ? array {
         $sql = $this->selectSql();
-        if(0 < $this->db->execute($sql, $this->_params, \sys\Db::SQL_SELECT)){
-            return $this->db->result($this->_types,\sys\Db::SQL_SELECT);
+        if(0 < $this->db->execute($sql, $this->_conds, \sys\Db::SQL_SELECT)){
+            return $this->db->result($this->_types, \sys\Db::SQL_SELECT);
         }
         return null;
     }
@@ -448,7 +458,7 @@ class SqlBuilder {
      */
     public function update(array $data = []) : ? int {
         $sql = $this->updateSql($data);
-        return $this->db->execute($sql, $this->_params, \sys\Db::SQL_UPDATE);
+        return $this->db->execute($sql, [...$this->_params, ...$this->_conds], \sys\Db::SQL_UPDATE);
     }
 
     /**
@@ -458,7 +468,7 @@ class SqlBuilder {
      */
     public function delete() : ?int {
         $sql = $this->deleteSql();
-        return $this->db->execute($sql, $this->_params, \sys\Db::SQL_DELETE);
+        return $this->db->execute($sql, $this->_conds, \sys\Db::SQL_DELETE);
     }
 
     # ==   缓存查询方法 用于子查询 或者 批量查询场合 ===
@@ -470,22 +480,22 @@ class SqlBuilder {
 
     public function subSelect() :\sys\db\SubQuery {
         $sql = $this->selectSql();
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_SELECT);
+        return new \sys\db\SubQuery($sql, $this->_conds, \sys\Db::SQL_SELECT);
     }
 
     public function subFind() :\sys\db\SubQuery {
         $sql = $this->findSql();
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_FIND);
+        return new \sys\db\SubQuery($sql, $this->_conds, \sys\Db::SQL_FIND);
     }
 
     public function subUpdate(array $data = []) :\sys\db\SubQuery {
         $sql = $this->updateSql($data);
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_UPDATE);
+        return new \sys\db\SubQuery($sql, [...$this->_params, ...$this->_conds], \sys\Db::SQL_UPDATE);
     }
 
     public function subDelete() : \sys\db\SubQuery {
         $sql = $this->deleteSql();
-        return new \sys\db\SubQuery($sql, $this->_params, \sys\Db::SQL_DELETE);
+        return new \sys\db\SubQuery($sql, $this->_conds, \sys\Db::SQL_DELETE);
     }
 
 }

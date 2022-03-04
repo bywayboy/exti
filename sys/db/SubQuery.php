@@ -23,6 +23,11 @@ class SubQuery {
         $this->_sql = $sql;
         $this->_params = $params;
     }
+
+    /**
+     * 获取带占位符的SQL语句
+     * @return string 得到SQL
+     */
     public function getSql() : string{
         return $this->_sql;
     }
