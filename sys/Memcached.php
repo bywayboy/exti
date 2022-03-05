@@ -13,10 +13,17 @@ class Memcached {
     # 连接池
     protected static array $conn_pool = [];
 
+    /**
+     * 创建|打开一个Memcached连接池.
+     * @param string $host 主机IP地址
+     * @param int $port 主机端口.
+     * @param int $size 连接池的连接个数 第一次创建时有效.
+     */
     public function __construct(string $host, int $port = 11211, int $size = 16)
     {
         $this->key = "{$host}:{$port}";
         $this->pool = static::$conn_pool[$this->key] ?? null;
+        
         if(null === $this->pool){
             $this->pool = static::$conn_pool[$this->key] = new ConnectionPool(function() use($host, $port){
                 $client = new \Swoole\Coroutine\Client(SWOOLE_SOCK_TCP);
