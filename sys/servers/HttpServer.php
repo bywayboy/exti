@@ -114,7 +114,7 @@ class HttpServer {
                     'message'=>$e->getMessage(),
                     'file'=>substr($e->getFile(), strlen(dirname(SITE_ROOT)) + 1),
                     'class'=>$class,
-                    'type'=>$e::class,
+                    'type'=>addcslashes($e::class, "\\"),
                     'line'=>$e->getLine(),
                     'trace'=>$e->getTraceAsString()
                 ]);
