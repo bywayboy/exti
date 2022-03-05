@@ -18,7 +18,7 @@ class Memcached {
     # 连接池
     protected static array $conn_pool = [];
 
-        /**
+    /**
      * 创建|打开一个Memcached连接池.
      * @param string $host 主机IP地址
      * @param int $port 主机端口.
@@ -75,7 +75,9 @@ class Memcached {
                     'open_eof_check'=>true,
                     'package_eof'=>"\r\n"
                 ));
-                #echo "connect memcached: " . $client->connect($host, $port) . "\n";
+                if(false === $client->connect($host, $port)){
+                    Log::write("Memcached: 连接到: {$this->key} 失败!", 2);
+                }
                 return $client;
             }, $size);
         }
@@ -105,11 +107,11 @@ class Memcached {
      * 读取一项数据.
      */
     public function get(string $key) : mixed {
-        $conn = $this->pool->get();
 
         $cmd = "get {$key}\r\n";
         $cmdlen = strlen($cmd);
-        if($cmdlen === $conn->send($cmd)){
+        $conn = $this->pool->get();
+        if($cmdlen === ($sret = $conn->send($cmd))){
             if(false !== $result = $conn->recv()){
                 @list($stat, $key, $flags, $bytes) =  explode(' ', $result);
                 if($stat === 'VALUE'){
