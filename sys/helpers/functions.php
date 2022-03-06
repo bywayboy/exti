@@ -14,7 +14,9 @@ use Swoole\WebSocket\Frame;
 use sys\servers\http\Json;
 use sys\servers\http\Html;
 use sys\servers\http\Redirect;
+use sys\servers\http\Text;
 use sys\servers\http\View;
+use sys\servers\http\Xml;
 use sys\services\WebSocket;
 
 // 判断一个请求是否是WebSocket
@@ -36,6 +38,23 @@ if(!function_exists('html')) {
         return new Html($msg, $status);
     }
 }
+
+if(!function_exists('text')) {
+    function text(string $msg, int $status = 200) : Text
+    {
+        return new Text($msg, $status);
+    }
+}
+
+
+if(!function_exists('xml')) {
+    function html(string $msg, int $status = 200) : Xml
+    {
+        return new Xml($msg, $status);
+    }
+}
+
+
 
 if(!function_exists('redirect')){
     /**
@@ -191,56 +210,69 @@ if(!function_exists('http_post'))
 }
 
 if(!function_exists('http_get'))
- {
-     /**
-      * 发起一个HTTP Post 请求.
-      * @param string $url 请求资源地址.
-      * @param null|array $headers HTTP协议头部信息
-      * @param int $timeout 超时时间
-      * @param  null|array $certs 证书 需包含2个成员 ssl_cert_file, ssl_key_file
-      * @return array return_code 错误码 0 成功, code http返回状态码, url 请求的url, body 返回内容.
-      */
-     function http_get(string $url, ?array $headers = null, int $timeout = 30, ?array $certs = null) : array {
-         $parts = parse_url($url);
-         $port = $parts['port'] ?? ('https' == $parts['scheme']?443:80);
-         $http = new \Swoole\Coroutine\Http\Client($parts['host'], $port, 'https' == $parts['scheme']);
- 
-         
-         $http->set(array_merge([
-             'timeout'=>$timeout,
-             'keep_alive'=>false,
-             'open_ssl'=>'https'==$parts['scheme']
-         ], $certs ?? []));
- 
-         $http->setMethod('GET');
-         
-         if(null !== $headers)
-             $http->setHeaders($headers);
- 
-         if(false !== $http->execute(substr($url, \strpos($url, $parts['path'])))){
-             $http->close();
-             $result = ['url'=>$url, 'code'=>$http->getStatusCode(),'body'=>$http->getBody(),'return_code'=>0];
-         }else{
-             $result = ['url'=>$url, 'code'=>0, 'return_code'=>$http->errCode];
-         }
- 
-         return $result;
-     }
- }
+{
+    /**ßß
+     * 发起一个HTTP Post 请求.
+    * @param string $url 请求资源地址.
+    * @param null|array $headers HTTP协议头部信息
+    * @param int $timeout 超时时间
+    * @param  null|array $certs 证书 需包含2个成员 ssl_cert_file, ssl_key_file
+    * @return array return_code 错误码 0 成功, code http返回状态码, url 请求的url, body 返回内容.
+    */
+    function http_get(string $url, ?array $headers = null, int $timeout = 30, ?array $certs = null) : array {
+        $parts = parse_url($url);
+        $port = $parts['port'] ?? ('https' == $parts['scheme']?443:80);
+        $http = new \Swoole\Coroutine\Http\Client($parts['host'], $port, 'https' == $parts['scheme']);
 
- if(!function_exists('crontab')){
+        
+        $http->set(array_merge([
+            'timeout'=>$timeout,
+            'keep_alive'=>false,
+            'open_ssl'=>'https'==$parts['scheme']
+        ], $certs ?? []));
 
-      /**
-       * 创建一个计划任务. 如果发生错误会抛出一个异常.
-       * @param string $every 执行间隔时间.
-       * @param string $at 确定执行时间.
-       * @param callable $exec 回调函数
-       * @param int $time 开始执行时间 默认为当前时间
-       * @return sys\CrontabTask 返回任务对象.
-       */
-     function crontab(string $every, string $at, callable $exec, int $time = 0) :\sys\CrontabTask{
-         if(0 == $time)
-             $time = time();
-        return new \sys\CrontabTask($time, $every, $at ,$exec);
-     }
- }
+        $http->setMethod('GET');
+        
+        if(null !== $headers)
+            $http->setHeaders($headers);
+
+        if(false !== $http->execute(substr($url, \strpos($url, $parts['path'])))){
+            $http->close();
+            $result = ['url'=>$url, 'code'=>$http->getStatusCode(),'body'=>$http->getBody(),'return_code'=>0];
+        }else{
+            $result = ['url'=>$url, 'code'=>0, 'return_code'=>$http->errCode];
+        }
+
+        return $result;
+    }
+}
+
+if(!function_exists('uniqueid'))
+{
+    /**
+     * 生成一个36进制表示的 UUID
+     */
+    function uniqueid(){
+        $uuid = substr(file_get_contents('/proc/sys/kernel/random/uuid'),0, -1);
+        $hex = str_replace('-','', $uuid);
+        return base_convert($hex, 16, 36);
+    }
+}
+
+
+if(!function_exists('crontab')){
+
+    /**
+     * 创建一个计划任务. 如果发生错误会抛出一个异常.
+     * @param string $every 执行间隔时间.
+     * @param string $at 确定执行时间.
+     * @param callable $exec 回调函数
+     * @param int $time 开始执行时间 默认为当前时间
+     * @return sys\CrontabTask 返回任务对象.
+     */
+    function crontab(string $every, string $at, callable $exec, int $time = 0) :\sys\CrontabTask{
+        if(0 == $time)
+            $time = time();
+    return new \sys\CrontabTask($time, $every, $at ,$exec);
+    }
+}
