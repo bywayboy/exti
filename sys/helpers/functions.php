@@ -48,7 +48,7 @@ if(!function_exists('text')) {
 
 
 if(!function_exists('xml')) {
-    function html(string $msg, int $status = 200) : Xml
+    function xml(string $msg, int $status = 200) : Xml
     {
         return new Xml($msg, $status);
     }

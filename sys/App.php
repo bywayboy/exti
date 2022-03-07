@@ -59,6 +59,29 @@ class App {
     }
 
     /**
+     * 在工作进程关闭之前之初执行.
+     * @access private
+     * @param string $module 模块名称
+     * @param int $serverId 服务器ID
+     * @param int $workerId 进程ID
+     */
+    private static function beforeWorkeShutdown(string $module, int $serverId, int $workerId):void {
+        $wg = new WaitGroup();
+        $wg->add();
+        Coroutine::create(function () use($wg, $module, $serverId, $workerId){
+            $time = time();
+            try{
+                $class = "\\app\\{$module}\\BootStarup::onWorkerShutdown";
+                call_user_func_array($class, [$serverId, $workerId]);
+            }catch(Throwable $e){
+                echo 'ERROR: ' . $e->getMessage() . "\n";
+            }
+            $wg->done();
+        });
+        $wg->wait();
+    }
+
+    /**
      * 应用程序入口
      * @access public
      * @return void
@@ -90,18 +113,20 @@ class App {
                     $server = new $protocol($config, $module, $workerId);
                     
                     # 收到15信号关闭服务
-                    \Swoole\Process::signal(SIGTERM, function () use($server){
+                    \Swoole\Process::signal(SIGTERM, function () use($server, $module, $config, $workerId){
                         echo "=== Server Shutdown by SIGTERM\n";
                         SysEvents::DispathEvent('shutdown');
                         $server->shutdown();
+                        static::beforeWorkeShutdown($module, $config['server_id'], $workerId);
                         \Swoole\Timer::clearAll(); //清理所有队列中的任务
                     });
 
                     # 收到13信号关闭服务 Ctrl + C
-                    \Swoole\Process::signal(SIGINT, function () use($server){
+                    \Swoole\Process::signal(SIGINT, function () use($server, $module, $config, $workerId){
                         echo "=== Server Shutdown by Crtl+C\n";
                         SysEvents::DispathEvent('shutdown');
                         $server->shutdown();
+                        static::beforeWorkeShutdown($module, $config['server_id'], $workerId);
                         \Swoole\Timer::clearAll(); //清理所有队列中的任务
                     });
                     # 启动服务
