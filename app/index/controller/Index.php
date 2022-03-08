@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace app\index\controller;
 
+use app\index\BootStarup;
 use \Swoole\Http\Request;
 use \Swoole\Http\Response;
 use sys\servers\http\View;
@@ -16,7 +17,7 @@ class Index {
             'php_ver'=>PHP_VERSION,                     # PHP版本
             'os'=>PHP_OS,                               # 操作系统
             'cpus'=>swoole_cpu_num(),                   # CPU核心数目
-            'start_time'=>date('Y-m-d H:i:s', $this->start_time),
+            'start_time'=>date('Y-m-d H:i:s', BootStarup::$start_time),
         ];
        return json($info);
     }

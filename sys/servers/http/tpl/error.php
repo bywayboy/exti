@@ -8,6 +8,8 @@
         .file {font-size: 18px;}
         div.trace {font-size: 18px;}
         pre.trace{font-size:14px; background-color: #f9f9f9; padding:20px; border: 1px solid #CECECE;}
+        div.copy{border-top: 1px solid #CECECA; text-align: right;}
+        a{text-decoration: none; color: dodgerblue; line-height: 200%;}
     </style>
 </head>
 
@@ -17,6 +19,7 @@
 <div class="line">行号: <?php echo $line ?></div>
 <div class="trace">调用栈: </div>
 <pre class="trace"><?php echo $trace ?></pre>
+<div class="copy"> <a href="https://wiki.swoole.com" target="_blank">Swoole</a> + <a href="https://book.exti.cc/framework/" target="_blank">Exti Framework</a></div>
 </body>
 <script lang="javascript">
     var errtype = "<?php echo $type ?>";
