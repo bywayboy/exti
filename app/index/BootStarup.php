@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace app\index;
 
+use sys\Log;
+
 class BootStarup {
     /**
      * 当工作进程启动的时候执行该方法.
@@ -12,6 +14,9 @@ class BootStarup {
     public static function onWorkerStart(int $serverId, int $workerId) : void
     {
         echo "Worker BootStrap {$serverId}, {$workerId}\n";
+        Log::write("log write ... test", 'INFO');
+        Log::write("log write ... test", 'ERROR');
+        Log::write("log write ... test", 'SQL');
     }
 
     /**

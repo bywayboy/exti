@@ -89,6 +89,7 @@ class App {
     public static function execute()
     {
         $modules_conf = Config::get('app.modules');
+
         # 在这里执行系统启动之前的任务.
         static::beforeWorkerManagerCreate();
 
@@ -100,6 +101,8 @@ class App {
         foreach($modules_conf as $module=>$config) {
             if($config['enabled']) {
                 $pm->addBatch($config['worker_num'], function($pool, $workerId) use ($module, $config) {
+
+                    Log::start($workerId);
 
                     # 指定工作进程的运行角色
                     if(!empty($config['user']))
@@ -119,6 +122,7 @@ class App {
                         $server->shutdown();
                         static::beforeWorkeShutdown($module, $config['server_id'], $workerId);
                         \Swoole\Timer::clearAll(); //清理所有队列中的任务
+                        Log::end();
                     });
 
                     # 收到13信号关闭服务 Ctrl + C
@@ -128,6 +132,7 @@ class App {
                         $server->shutdown();
                         static::beforeWorkeShutdown($module, $config['server_id'], $workerId);
                         \Swoole\Timer::clearAll(); //清理所有队列中的任务
+                        Log::end();
                     });
                     # 启动服务
                     $server->start();

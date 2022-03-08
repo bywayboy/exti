@@ -104,7 +104,9 @@ class Memcached {
     }
 
     /**
-     * 读取一项数据.
+     * 读取一项数据.成功返回 数据内容
+     * @param string $key 键名
+     * @return mixed 成功返回数据, 失败返回 null
      */
     public function get(string $key) : mixed {
 
@@ -130,7 +132,7 @@ class Memcached {
                     }
                 }else{
                     $this->pool->put($conn);
-                    return false;
+                    return null;
                 }
             }
         }
@@ -140,14 +142,35 @@ class Memcached {
         throw new MemcachedException("连接丢失", 1);
     }
 
+    /**
+     * 设置一项数据, 不管是否存在
+     * @param string $key 键名
+     * @param mixed $data 数据
+     * @param int $expire 过期时间
+     * @return bool 成功返回 true 失败返回 false 
+     */
     public function set(string $key, mixed $data, int $expire = 0) : bool {
         return $this->store('set', $key, $data, $expire);
     }
 
+    /**
+     * 添加一项数据 如果已经存在 返回 false
+     * @param string $key 键名
+     * @param mixed $data 数据
+     * @param int $expire 过期时间
+     * @return bool 成功返回 true 失败返回 false 
+     */
     public function add(string $key, mixed $data, int $expire = 0) : bool {
         return $this->store('add', $key, $data, $expire);
     }
 
+    /**
+     * 替换一项数据, 如果数据不存在 返回 false, 如果出错会抛出一个异常.
+     * @param string $key 键名
+     * @param mixed $data 数据
+     * @param int $expire 过期时间
+     * @return bool 成功返回 true 数据不存在返回false 
+     */
     public function replace(string $key, mixed $data, int $expire = 0) : bool {
         return $this->store('replace', $key, $data, $expire);
     }
