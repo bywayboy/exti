@@ -21,6 +21,7 @@ class Validator implements JsonSerializable {
         'mobile'=>':?手机号码格式错误.',
         'idcard'=>':?证件号码格式错误.',
         'zip'=>':?邮政编码格式错误.',
+        'ean13'=>':?商品条码格式错误.',
         'in'=>':?的值无效.',
         'between'=>':?的值不在有效范围内.',
         'min'=>':?的值太小了.',
@@ -150,6 +151,19 @@ class Validator implements JsonSerializable {
     protected static function zip($value, array $data, ?array $args): bool {
         if(null === $value || '' === $value) return true;
         return preg_match('/\d{6}/', $value)?true:false;
+    }
+
+    # 商品条码验证
+    protected static function ean13($value, array $data, ?array $args):bool{
+        if(null === $value || '' === $value) return true;
+        if(!preg_match('/^\d{13}$/', $value))
+            return false;
+        $length = strlen($value);
+        $sum = 0; $sum1 = 0; $sum2 = 0;
+        for($i = 0; $i < $length-1 ; $i ++){ $sum1 += $value[$i]; }
+        for($i = 1; $i < $length ; $i ++){ $sum2 += $value[$i]; }
+        $sum = 10 - (($sum1 + $sum2 * 3) % 10);
+        return $sum == $value[$length - 1];
     }
 
     protected static function min($value, array $data, ?array $args): bool{
