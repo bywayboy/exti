@@ -152,9 +152,9 @@ class SqlBuilder {
         case '>=':
         case '<=':
             $type = $this->_types[ $field ] ?? gettype($exp[2]);
-            return $this->_parseEq($field, $cond, $exp, $type);
+            return $this->_parseEq($fullFieldName, $cond, $exp, $type);
         case 'LIKE':
-            return $this->_parseEq($field, $cond, $exp, 'string');
+            return $this->_parseEq($fullFieldName, $cond, $exp, 'string');
         case 'IN':
         case 'NOT IN':
             $type = $this->_types[ $field ] ?? null;

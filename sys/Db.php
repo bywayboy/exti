@@ -38,7 +38,7 @@ class Db{
 
     # 执行结果保存
     protected $_result = null;
-    protected $_insid = 0;
+    protected int $_insid = 0;
 
     # 数据库是否断开连接判断标识
     private static $connBreakDict = [
@@ -230,7 +230,7 @@ class Db{
                 $stmt->execute(); # 成功 TRUE 失败返回 FALSE
                 switch($operation){
                 case static::SQL_INSERT:
-                    $this->_insid = $conn->lastInsertId();
+                    $this->_insid = intval($conn->lastInsertId());
                 case static::SQL_UPDATE:
                 case static::SQL_DELETE:
                     $affert_rows = $stmt->rowCount();
