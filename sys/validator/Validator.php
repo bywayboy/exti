@@ -160,9 +160,11 @@ class Validator implements JsonSerializable {
             return false;
         $length = strlen($value);
         $sum = 0; $sum1 = 0; $sum2 = 0;
-        for($i = 0; $i < $length-1 ; $i +=2){ $sum1 += $value[$i]; }
-        for($i = 1; $i < $length ; $i +=2){ $sum2 += $value[$i]; }
-        $sum = 10 - (($sum1 + $sum2 * 3) % 10);
+        for($i = 0; $i < 12; $i +=2){
+            $sum1 += $value[$i];
+            $sum2 += $value[$i + 1];
+        }
+        $sum = (10 - (($sum1 + $sum2 * 3) % 10) % 10);
         return $sum == $value[$length - 1];
     }
 
