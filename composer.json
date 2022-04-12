@@ -1,6 +1,6 @@
 {
     "name": "bywayboy/exti",
-    "description": "",
+    "description": "PHP Swoole Framework ",
     "type": "project",
     "license": "Apache-2.0",
     "authors": [
@@ -21,6 +21,7 @@
         }
     },
     "require": {
-        "swoole/ide-helper": "^4.8"
+        "swoole/ide-helper": "^4.8",
+        "php": ">=8.0"
     }
 }
