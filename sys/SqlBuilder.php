@@ -166,7 +166,7 @@ class SqlBuilder {
             break;
         case 'BETWEEN':
             $type = $this->_types[ $field ] ?? gettype($exp[2]);
-            return $this->_parseBetween($exp[2], $type);
+            return "`{$fullFieldName}` " . $this->_parseBetween($exp[2], $type);
         case 'EXP':
             $type = $this->_types[ $field ] ?? gettype($exp[2]);
             return $this->_parseExp(array_slice($exp, 2), $type);
@@ -272,12 +272,8 @@ class SqlBuilder {
     }
 
     public function limit(int $offset, ?int $num=null) :\sys\SqlBuilder {
-        if(null === $num){
-            $this->_limit = ' LIMIT ' . $offset;
-        }else{
-            $this->limit =  ' LIMIT ' . $offset . ', ' . $num;
-        }
-        
+
+        $this->_limit = is_null($num) ? ' LIMIT ' . $offset : ' LIMIT ' . $offset . ', ' . $num;
         return $this;
     }
 
