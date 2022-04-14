@@ -64,7 +64,7 @@ class SubQuery {
         $start = 0;
         foreach($params as $i=>$param){
             if($param[1] == \PDO::PARAM_STR){
-                $v = '\'' . addslashes($param[0]) . '\'';
+                $v = '\'' . addslashes(strval($param[0])) . '\'';
             } elseif ($param[1] == \PDO::PARAM_LOB){
                 $v = \implode('' ,['x','\'', \bin2hex($param),'\'']);
             }elseif($param[1] == \PDO::PARAM_BOOL){
