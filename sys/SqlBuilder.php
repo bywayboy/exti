@@ -272,7 +272,6 @@ class SqlBuilder {
     }
 
     public function limit(int $offset, ?int $num=null) :\sys\SqlBuilder {
-
         $this->_limit = is_null($num) ? ' LIMIT ' . $offset : ' LIMIT ' . $offset . ', ' . $num;
         return $this;
     }
@@ -283,14 +282,25 @@ class SqlBuilder {
     }
 
     public function inc(string $field, $value) :\sys\SqlBuilder{
-        $ftype = $this->_types[$field] ?? gettype($value);
-        $this->_update[] = '`' . $field. '` = `' . $field .'` + ' . $this->_parseValue($value, $ftype);
+        $rawtype = gettype($value);
+        echo "raw = {$rawtype}\n";
+        if($rawtype == 'object' && $value instanceof \sys\db\ExpValue){
+            $this->_update[] = '`' . $field. '` = `' . $field .'` + ' . strval($value);
+        }else{
+            $this->_update[] = '`' . $field. '` = `' . $field .'` + ?';
+            $this->_params[] = $this->_parseValue($value, $this->_types[ $field ] ?? $rawtype);
+        }
         return $this;
     }
 
-    public function dec($field, $value) :\sys\SqlBuilder{
-        $ftype = $this->_types[$field] ?? gettype($value);
-        $this->_update[] = '`' . $field. '` = `' . $field .'` - ' . $this->_parseValue($value, $ftype);
+    public function dec(string $field, $value) :\sys\SqlBuilder{
+        $rawtype = gettype($value);
+        if($rawtype == 'object' && $value instanceof \sys\db\ExpValue){
+            $this->_update[] = '`' . $field. '` = `' . $field .'` - ' . strval($value);
+        }else{
+            $this->_update[] = '`' . $field. '` = `' . $field .'` - ?';
+            $this->_params[] = $this->_parseValue($value, $this->_types[ $field ] ?? $rawtype);
+        }
         return $this;
     }
 
@@ -354,13 +364,16 @@ class SqlBuilder {
             if(null === $val){
                 $values[] = '`' . $key . '` = NULL' ;
             }else{
-                $values[] = '`' . $key . '` = ?' ;
-                $type = $this->_types[ $key ] ?? gettype($val);
-                $this->_params[] = $this->_parseValue($val, $type);
+                $rawtype = gettype($val);
+                if('object' == $rawtype && $val instanceof \sys\db\ExpValue){
+                    $values[] = '`' . $key . '` = '. strval($val);
+                }else{
+                    $values[] = '`' . $key . '` = ?' ;
+                    $this->_params[] = $this->_parseValue($val, $this->_type[$key] ?? $rawtype);
+                }
             }
         }
         $sql_parts[] = \implode(',', $values);
-
         return implode('', $sql_parts);
     }
 
@@ -371,9 +384,13 @@ class SqlBuilder {
             if(null === $val){
                 $update[] = '`' . $key . '` = NULL' ;
             }else{
-                $update[] = '`' . $key . '` = ?' ;
-                $type = $this->_types[ $key ] ?? gettype($val);
-                $this->_params[] = $this->_parseValue($val, $type);
+                $rawtype = gettype($val);
+                if('object' == $rawtype && $val instanceof \sys\db\ExpValue){
+                    $update[] = '`' . $key . '` = '. strval($val);
+                }else{
+                    $update[] = '`' . $key . '` = ?' ;
+                    $this->_params[] = $this->_parseValue($val, $this->_type[$key] ?? $rawtype);
+                }
             }
         }
         $sql_parts[] = \implode(', ', $update);

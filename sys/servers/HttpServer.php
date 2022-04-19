@@ -88,7 +88,23 @@ class HttpServer {
 
             try{
                 $m = new $class();
-                $ret = $m->$method($request, $response);
+                # 中间件遍历
+                if(property_exists($m, 'middleware')){
+                    foreach($m->middleware as $middleware=>$rule){
+                        if(is_array($rule)){
+                            if(!($rule['except'][$method] ?? false))
+                                if($ret = $middleware::handle($request, $response, $m))
+                                    break;
+                        }else{
+                            if($ret = $rule::handle($request, $response, $m))
+                                break;
+                        }
+                    }
+                    if(!isset($ret) || null === $ret)
+                        $ret = $m->$method($request, $response);
+                }else{
+                    $ret = $m->$method($request, $response);
+                }
                 if($ret) {
                     if(true === $ret) return;
                     if($ret instanceof \sys\servers\http\Resp){

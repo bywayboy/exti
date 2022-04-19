@@ -215,7 +215,7 @@ class Db{
     public function execute(string $sql, array $params, int $operation) : int {
         if(Config::get('app.log_sql')){
             $logSql = SubQuery::buildSql($sql, $params);
-            //Log::write($sql . json_encode($params, JSON_PRETTY_PRINT), 'DBX', 'SQL');
+            Log::write($sql . json_encode($params, JSON_PRETTY_PRINT), 'DBX', 'SQL');
             Log::write($logSql, 'DBX', 'SQL');
         }
 

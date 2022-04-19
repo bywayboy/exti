@@ -76,7 +76,7 @@ class Memcached {
                     'package_eof'=>"\r\n"
                 ));
                 if(false === $client->connect($host, $port)){
-                    Log::write("Memcached: 连接到: {$this->key} 失败!", 2);
+                    Log::write("Memcached: 连接到: {$this->key} 失败!", 'ERROR');
                 }
                 return $client;
             }, $size);
