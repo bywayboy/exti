@@ -13,6 +13,7 @@ class SqlBuilder {
     protected array $_update = [];      # 更新字段表 UPDATE 
     protected array $_join = [];        # 要关联的表名
     protected $_order;                  # 检索排序条件
+    protected array $_group;            # GROUP 支持
     protected $_lock;                   # FOR UPDATE/LOCK IN SHARE MODE
     protected array $_params = [];      # Sql 绑定参数
     protected array $_conds  = [];      # WHERE绑定参数
@@ -158,7 +159,7 @@ class SqlBuilder {
         case 'IN':
         case 'NOT IN':
             $type = $this->_types[ $field ] ?? null;
-            return $this->_parseIn($field, $cond, $exp[2], $type);
+            return $this->_parseIn($fullFieldName, $cond, $exp[2], $type);
         case 'IS':
             return "`{$fullFieldName}` is NULL";
         case 'IS NOT':
@@ -271,6 +272,12 @@ class SqlBuilder {
         return $this;
     }
 
+    public function group(string $field) : \sys\SqlBuilder
+    {
+        $this->_group[] = $field;
+        return $this;
+    }
+
     public function limit(int $offset, ?int $num=null) :\sys\SqlBuilder {
         $this->_limit = is_null($num) ? ' LIMIT ' . $offset : ' LIMIT ' . $offset . ', ' . $num;
         return $this;
@@ -317,6 +324,11 @@ class SqlBuilder {
             $sql_parts[] = implode('', $this->_where);
         }
 
+        if(!empty($this->_group)){
+            $sql_parts[] =  ' GROUP BY ';
+            $sql_parts[] = implode('', $this->_group);
+        }
+
         if(!empty($this->_order)){
             $sql_parts[] = ' ORDER BY '. $this->_order .' ';
         }
@@ -343,6 +355,12 @@ class SqlBuilder {
             $sql_parts[] = ' WHERE ';
             $sql_parts[] = implode('', $this->_where);
         }
+        
+        if(!empty($this->_group)){
+            $sql_parts[] =  ' GROUP BY ';
+            $sql_parts[] = implode('', $this->_group);
+        }
+        
         if(!empty($this->_order)){
             $sql_parts[] = ' ORDER BY '. $this->_order .' ';
         }
