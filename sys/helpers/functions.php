@@ -10,14 +10,14 @@ declare(strict_types=1);
 
 use Swoole\Http\Response;
 use Swoole\Http\Request;
-use Swoole\WebSocket\Frame;
 use sys\servers\http\Json;
 use sys\servers\http\Html;
+use sys\servers\http\Nothing;
 use sys\servers\http\Redirect;
 use sys\servers\http\Text;
 use sys\servers\http\View;
 use sys\servers\http\Xml;
-use sys\services\WebSocket;
+
 
 // 判断一个请求是否是WebSocket
 function isWebSocket(\Swoole\Http\Request $req){
@@ -55,6 +55,11 @@ if(!function_exists('xml')) {
 }
 
 
+if(!function_exists('nothing')) {
+    function nothing() : Nothing {
+        return new Nothing();
+    }
+}
 
 if(!function_exists('redirect')){
     /**
