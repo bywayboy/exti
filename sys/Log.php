@@ -5,7 +5,6 @@ namespace sys;
 
 use Swoole\Coroutine;
 use Swoole\Coroutine\Channel;
-use Swoole\Coroutine\System;
 
 class Log {
 
@@ -13,6 +12,10 @@ class Log {
     const MAX_LOG_FILE_SIZE =  4 * 1024 * 1024;
     # 每512kb 写入一次磁盘
     const MAX_MEM_CACHE_SIZE = 512 * 1024;
+    # 日志队列最大长度
+    const MAX_QUEUE_SIZE    = 32;
+    # 日志文件至少3分钟写一次盘
+    const LOG_CACHE_TIMEOUT = 180;
 
     static ?Channel $channel = null;
     static int $workerId;
@@ -33,8 +36,10 @@ class Log {
     /**
      * 内存文件写入磁盘
      */
-    protected static function flush($fp, $fpmem, int $iCacheSize) : ?int {
+    protected static function toStorage($fp, $fpmem, int $iCacheSize) : ?int {
+        
         if($iCacheSize > 0){
+            /*
             rewind($fpmem);
             if(false !== ($content = fread($fpmem, $iCacheSize))){
                 rewind($fpmem);
@@ -42,9 +47,23 @@ class Log {
                     return $numWrite;
                 }
             }
+            */
+            rewind($fpmem);
+            if(false !== ($numWrite = stream_copy_to_stream($fpmem, $fp, $iCacheSize))){
+                rewind($fpmem);
+                return $numWrite;
+            }
             return null;
         }
         return 0;
+    }
+
+    /**
+     * 内存日志立即写盘
+     */
+    public static function flush()
+    {
+        null !== static::$channel && static::$channel->push(0);
     }
 
     protected static function console(string $logStr, string $level) : void {
@@ -52,30 +71,30 @@ class Log {
         #背景颜色：40-47 黑、红、绿、黄、蓝、紫、青、白
         switch($level){
             case 'ERROR':
-                $s = "\x1B[31m{$logStr}\x1B[0m\n";
+                $s = "\x1B[31m{$logStr}\x1B[0m";
                 break;
             case 'WARN':
             case 'WARNING':
-                $s = "\x1B[33m{$logStr}\x1B[0m\n";
+                $s = "\x1B[33m{$logStr}\x1B[0m";
                 break;
             case 'SUCCESS':
-                $s = "\x1B[32m{$logStr}\x1B[0m\n";
+                $s = "\x1B[32m{$logStr}\x1B[0m";
                 break;
             case 'NOTICE':
             case 'SQL':
-                $s = "\x1B[34m{$logStr}\x1B[0m\n";
+                $s = "\x1B[34m{$logStr}\x1B[0m";
                 break;
             case 'DEBUG':
-                $s = "\x1B[35m{$logStr}\x1B[0m\n";
+                $s = "\x1B[35m{$logStr}\x1B[0m";
                 break;
             case 'CALL':
-                $s = "\x1B[36m{$logStr}\x1B[0m\n";
+                $s = "\x1B[36m{$logStr}\x1B[0m";
                 break;
             case 'INFO':
-                $s = "\x1B[47;30m{$logStr}\x1B[0;0m\n";
+                $s = "\x1B[47;30m{$logStr}\x1B[0;0m";
                 break;
             default:
-                $s = $logStr."\n";
+                $s = $logStr."";
                 break;
             }
             echo $s;
@@ -91,18 +110,18 @@ class Log {
         }
         $date = date('Y-m-d H:i:s');
         $cid = \Swoole\Coroutine::getCid() ?? '-';
-        $logstr = "[{$date}][{$cid}][{$level}] {$msg}";
+        $logstr = "[{$date}][{$cid}][{$level}] {$msg}\n";
         
         # 如果是控制台模式 同时打印日志到控制台.
         IS_CLI && static::console($logstr, $level);
 
-        static::$channel->push($logstr);
+        null !== static::$channel && static::$channel->push($logstr);
     }
 
     public static function start(int $workerId){
 
         # 日志写入协程
-        static::$channel = new Channel(20);
+        static::$channel = new Channel(static::MAX_QUEUE_SIZE);
 
         Coroutine::create(function($channel, int $workerId){
             $mem = fopen('php://memory', 'w+');
@@ -125,17 +144,35 @@ class Log {
             }
 
             if(null !== $channel){
-                while($logStr = $channel->pop()) {
+                while(true) {
+                    $logStr = $channel->pop(static::LOG_CACHE_TIMEOUT);
                     if($channel->errCode === SWOOLE_CHANNEL_CLOSED)
                         break;
 
-                    # 日期变了, 重开日志文件.
-                    if($day !== ($d = date('d'))){
+                    # 内存数据写盘
+                    if($channel->errCode == SWOOLE_CHANNEL_TIMEOUT && $iCacheSize > 0){
+                        if(null !== ($numWrite = static::toStorage($fp, $mem, $iCacheSize))){
+                            $iFileSize += $numWrite;
+                            $iCacheSize -= $numWrite;
+                        }
+                    }
+
+                    $d = date('d');
+                    # 日期变了, 或者文件满了. 重开日志文件.
+                    if($iFileSize >= static::MAX_LOG_FILE_SIZE || $day !== $d){
                         $day = $d;
 
-                        static::flush($fp, $mem, $iCacheSize);
-                        # 关闭旧的
+                        # 内存数据写盘
+                        if($iCacheSize > 0){
+                            if(null !== ($numWrite = static::toStorage($fp, $mem, $iCacheSize))){
+                                $iFileSize += $numWrite;
+                                $iCacheSize -= $numWrite;
+                            }
+                        }
+
+                        # 关闭旧的,并重命名
                         fclose($fp);
+
                         $time = time();
                         rename($file, substr($file, 0, strlen($file) - 4) . "_{$time}.txt");
 
@@ -151,40 +188,29 @@ class Log {
                         }
                     }
 
-                    if(false !== ($numWrite = fwrite($mem, $logStr))){
-                        $iCacheSize += $numWrite;
-                    }
-
-                    # 内存缓冲区满了, 写入文件.
-                    if($iCacheSize > static::MAX_MEM_CACHE_SIZE){
-                        if(null !== ($numWrite = static::flush($fp, $mem, $iCacheSize))){
-                            $iFileSize += $numWrite;
-                            $iCacheSize -= $numWrite;
-                        }else{
-                            # TODO: 丢弃缓存
+                    # 写入磁盘
+                    if(is_string($logStr)){
+                        if(false !== ($numWrite = fwrite($mem, $logStr))){
+                            $iCacheSize += $numWrite;
                         }
-                    }
-
-                    # 文件满了 重建文件.
-                    if($iFileSize > static::MAX_LOG_FILE_SIZE){
-                        fclose($fp);
-                        $time = time();
-                        rename($file, substr($file, 0, strlen($file) - 4) . "_{$time}.txt");
-
-                        $file = static::dir($workerId).date('d.\tx\t');
-                        if(false !== ($fp = fopen($file, 'a+'))){
-                            $iFileSize = \ftell($fp);
-                        }else{
-                            echo "[ERROR] [{$workerId}] 创建日志文件失败, 日志功能将被关闭!\n";
-                            $channel->close();
-                            static::$channel = null;
+                    }elseif(is_int($logStr)){
+                        switch($logStr){
+                        case 0: # 外部控制指令, 要求立即将日志写入磁盘.
+                            if($iCacheSize > 0){
+                                if(null !== ($numWrite = static::toStorage($fp, $mem, $iCacheSize))){
+                                    $iFileSize += $numWrite;
+                                    $iCacheSize -= $numWrite;
+                                }
+                            }
                             break;
                         }
                     }
                 }
             }
-            if(false !== $mem && false !== $fp)
-                static::flush($fp, $mem, $iCacheSize);
+            if(false !== $mem && false !== $fp){
+                # echo "写出内存日志... {$iCacheSize}字节\n";
+                static::toStorage($fp, $mem, $iCacheSize);
+            }
             if(false !== $mem)
                 fclose($mem);
             if(false !== $fp)
