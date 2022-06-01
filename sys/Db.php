@@ -324,7 +324,7 @@ class Db{
         $params = [];$sqlArr = [];
         foreach($sqls as $sql){
             if($sql instanceof SubQuery){
-                array_merge($params, $sql->getParams());
+                $params = [...$params, ...$sql->getParams()];
                 $sqlArr[] = $sql->getSql();
             }else{
                 $sqlArr[] = $sql;
@@ -344,7 +344,7 @@ class Db{
             foreach($params ?? [] as $i=>$value){
                 $stmt->bindValue(1 + $i, $value[0], $value[1]);
             }
-            $stmt->execute($allSql);
+            $stmt->execute();
             $reti = $stmt->rowCount();
             $this->putConn($conn);
             $conn = null;
