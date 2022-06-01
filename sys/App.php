@@ -48,7 +48,9 @@ class App {
                 call_user_func_array($class, [$serverId, $workerId]);
                 $crontab = Config::get('crontab', []);
                 foreach($crontab as $task){
-                    crontab($task['every'], $task['at'] ?? '', $task['exec'], $time);
+                    if(!isset($task['workerId']) || $task['workerId'] == $workerId){
+                        crontab($task['every'], $task['at'] ?? '', $task['exec'], $time);
+                    }
                 }
             }catch(Throwable $e){
                 echo 'ERROR: ' . $e->getMessage() . "\n";
