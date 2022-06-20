@@ -64,7 +64,7 @@ class CrontabTask {
             static::$jobs[spl_object_id($this)] = $this;
             return;
         }
-        throw new CrontabException("解析间隔指令失败.", 2);
+        throw new CrontabException("解析every指令失败.", 2);
     }
 
     /**
@@ -127,11 +127,11 @@ class CrontabTask {
      */
     protected function CreateDateJob(string $every, string $at, callable $callable) :void {
         
-        $closure = function (int $time, \Closure $closure) use($every, $callable) {
+        $closure = function (int $time, \Closure $closure, string $every, callable $callable){
             # 准备下一个任务
             $next = strtotime($every, $time);
             Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $next), 'Crontab', 'INFO');
-            $this->timerid = Timer::after(max(1000 * ($next - $time), 0), $closure, $next);
+            $this->timerid = Timer::after(max(1000 * ($next - $time), 0), $closure, $next, $closure, $every, $callable);
             # 执行当前任务
             Coroutine::create(function(int $time) use($callable) : void {
                 try{
@@ -142,14 +142,15 @@ class CrontabTask {
             }, $time);
         };
 
-        $time = time();
+
+        $time = time() + 10;
         $at = static::parseAt($time, $at);  # 获取执行时间
         
         while($at < $time){
             $at = strtotime($every, $at);
         }
+        $this->timerid = Timer::after(1000 * ($at - $time), $closure, $at, $closure, $every, $callable);
         Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $at), 'Crontab', 'INFO');
-        $this->timerid = Timer::after(1000 * ($at - $time), $closure, $at, $closure);
     }
     
     /**
@@ -160,11 +161,11 @@ class CrontabTask {
      * @return void
      */
     protected function CreateSecondJob(int $every, int $at, callable $callable) : void{
-        $closure = function (int $time, \Closure $closure) use($every, $callable) {
+        $closure = function (int $time, \Closure $closure, int $every, callable $callable){
             # 准备下一个任务
             $next = $time + $every;
             Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $next), 'Crontab', 'INFO');
-            $this->timerid = Timer::after(max(0, 1000 * ($next - $time)), $closure, $next);
+            $this->timerid = Timer::after(max(0, 1000 * ($next - $time)), $closure, $next, $every, $callable);
             # 执行当前任务
             Coroutine::create(function(int $time) use($callable) : void {
                 try{
@@ -180,6 +181,6 @@ class CrontabTask {
             $at += $every;
         }
         Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $at), 'Crontab', 'INFO');
-        $this->timerid = Timer::after(1000 * ($at - $time), $closure, $at, $closure);
+        $this->timerid = Timer::after(1000 * ($at - $time), $closure, $at, $closure, $every, $callable);
     }
 }
