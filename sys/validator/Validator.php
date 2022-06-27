@@ -18,6 +18,7 @@ class Validator implements JsonSerializable {
     protected static array $messages = [
         'require'=>':?为必填项.',
         'number'=>':?必须为数字.',
+        'boolean'=>':?必须是逻辑类型.',
         'mobile'=>':?手机号码格式错误.',
         'idcard'=>':?证件号码格式错误.',
         'zip'=>':?邮政编码格式错误.',
@@ -74,22 +75,18 @@ class Validator implements JsonSerializable {
 
     private static function _newrule(array &$rules, string $skey, ?string $name, array $exps) {
         $keys = explode('.', $skey);
-
+        
         # 设置节点
         foreach($keys as $i=>$key){
             if($i == 0){
-                if(!isset($rules[$key])){
-                    $rules[$key] = [];
-                }
+                $rules[$key] = $rules[$key] ?? [];
                 $rules = &$rules[$key];
             }else{
-                if(!isset($rules['child'][$key])){
-                    $rules['childs'][$key] = [];
-                }
+                $rules['childs'][$key] = $rules['childs'][$key] ?? [];
                 $rules = &$rules['childs'][$key];
             }
         }
-        $rules += ['exps'=>$exps, 'name'=>$name];
+        $rules = ['exps'=>$exps, 'name'=>$name, ...$rules];
     }
 
     public function jsonSerialize() : array  {
@@ -231,6 +228,14 @@ class Validator implements JsonSerializable {
         if(null === $value || '' === $value) return true;
         return preg_match('/^\d+$/', strval($value)) ? true : false;
     }
+
+    # 逻辑验证
+    protected static function boolean($value, $data, ?array $args) : bool {
+        if(empty($value)) return true; 
+        return is_bool($value);
+    }
+
+
     # 数组验证
     protected static function array($value, $data, ?array $args) : bool {
         if(empty($value)) return true; 
