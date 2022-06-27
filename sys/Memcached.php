@@ -95,6 +95,7 @@ class Memcached {
             $ret = $conn->recv(3.0);
             if($ret){
                 # STORED NOT_STORED
+                $this->pool->put($conn);
                 return $ret === 'STORED';
             }
         }
