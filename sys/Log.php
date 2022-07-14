@@ -9,9 +9,9 @@ use Swoole\Coroutine\Channel;
 class Log {
 
     # 日志文件最大尺寸
-    const MAX_LOG_FILE_SIZE =  4 * 1024 * 1024;
+    const MAX_LOG_FILE_SIZE =  10240000;    # 10M
     # 每512kb 写入一次磁盘
-    const MAX_MEM_CACHE_SIZE = 512 * 1024;
+    const MAX_MEM_CACHE_SIZE = 512000;      # 512k
     # 日志队列最大长度
     const MAX_QUEUE_SIZE    = 32;
     # 日志文件至少3分钟写一次盘
@@ -61,8 +61,7 @@ class Log {
     /**
      * 内存日志立即写盘
      */
-    public static function flush()
-    {
+    public static function flush() {
         null !== static::$channel && static::$channel->push(0);
     }
 
@@ -130,7 +129,6 @@ class Log {
             }
             $day = date('d');
 
-
             $iFileSize = $iCacheSize = 0;
             $file = static::dir($workerId).date('d.\tx\t');
 
@@ -149,8 +147,10 @@ class Log {
                     if($channel->errCode === SWOOLE_CHANNEL_CLOSED)
                         break;
 
-                    # 内存数据写盘
-                    if($channel->errCode == SWOOLE_CHANNEL_TIMEOUT && $iCacheSize > 0){
+                    # 如果满足2个条件: 
+                    #       1. 内存满了, 
+                    #       2. 超时了 且有内存数据内存数据写盘
+                    if($iCacheSize >= static::MAX_MEM_CACHE_SIZE || ($channel->errCode == SWOOLE_CHANNEL_TIMEOUT && $iCacheSize > 0)) {
                         if(null !== ($numWrite = static::toStorage($fp, $mem, $iCacheSize))){
                             $iFileSize += $numWrite;
                             $iCacheSize -= $numWrite;
@@ -162,17 +162,8 @@ class Log {
                     if($iFileSize >= static::MAX_LOG_FILE_SIZE || $day !== $d){
                         $day = $d;
 
-                        # 内存数据写盘
-                        if($iCacheSize > 0){
-                            if(null !== ($numWrite = static::toStorage($fp, $mem, $iCacheSize))){
-                                $iFileSize += $numWrite;
-                                $iCacheSize -= $numWrite;
-                            }
-                        }
-
                         # 关闭旧的,并重命名
                         fclose($fp);
-
                         $time = time();
                         rename($file, substr($file, 0, strlen($file) - 4) . "_{$time}.txt");
 
@@ -189,17 +180,36 @@ class Log {
                     }
 
                     # 写入磁盘
-                    if(is_string($logStr)){
-                        if(false !== ($numWrite = fwrite($mem, $logStr))){
+                    if(is_string($logStr)) {
+                        if(false !== ($numWrite = fwrite($mem, $logStr))) {
                             $iCacheSize += $numWrite;
                         }
-                    }elseif(is_int($logStr)){
-                        switch($logStr){
+                    } elseif(is_int($logStr)) {
+                        switch($logStr) {
                         case 0: # 外部控制指令, 要求立即将日志写入磁盘.
+                            # echo "[LOG] 控制指令要求写盘 {$iCacheSize}.\n";
                             if($iCacheSize > 0){
-                                if(null !== ($numWrite = static::toStorage($fp, $mem, $iCacheSize))){
+                                if(null !== ($numWrite = static::toStorage($fp, $mem, $iCacheSize))) {
                                     $iFileSize += $numWrite;
                                     $iCacheSize -= $numWrite;
+
+                                    if($iFileSize >= static::MAX_LOG_FILE_SIZE){
+                                        # 关闭旧的,并重命名
+                                        fclose($fp);
+                                        $time = time();
+                                        rename($file, substr($file, 0, strlen($file) - 4) . "_{$time}.txt");
+
+                                        # 创建新的
+                                        $file = static::dir($workerId).date('d.\tx\t');
+                                        if(false !== ($fp = fopen($file, 'a+'))) {
+                                            $iFileSize = \ftell($fp);
+                                        } else {
+                                            echo "[ERROR] [{$workerId}] 创建日志文件失败, 日志功能将被关闭!\n";
+                                            $channel->close();
+                                            static::$channel = null;
+                                            break;
+                                        }
+                                    }
                                 }
                             }
                             break;
@@ -223,6 +233,8 @@ class Log {
      * 停止记录日志
      */
     public static function end(){
-        static::$channel->close();
+        if(null !== static::$channel){
+            static::$channel->close();
+        }
     }
 }

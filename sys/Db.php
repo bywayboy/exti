@@ -346,7 +346,8 @@ class Db{
             }
             $stmt->execute();
             $reti = $stmt->rowCount();
-            $this->putConn($conn);
+            if(0 == $this->_trans_level)
+                $this->putConn($conn);
             $conn = null;
             return $reti;
         }catch(PDOException $e){
