@@ -364,7 +364,7 @@ class SqlBuilder {
         if(!empty($this->_order)){
             $sql_parts[] = ' ORDER BY '. $this->_order .' ';
         }
-        $sql_parts[] = ' LIMIT 1';
+        $sql_parts[] = $this->_limit ?? ' LIMIT 1';
 
         if(!empty($this->_lock)){
             $sql_parts[] = $this->_lock;
