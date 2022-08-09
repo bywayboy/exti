@@ -105,10 +105,10 @@ class Validator implements JsonSerializable {
         $field = array_pop($args);
         if(empty($args)){
             if(!empty($data[$field]))
-                return !empty($value);
+                return !(null === $value || '' === $value);
         }else{
             if(in_array($data[$field] ?? null, $args)){
-                return !empty($value);
+                return !(null === $value || '' === $value);
             }
         }
         return true;
@@ -119,10 +119,10 @@ class Validator implements JsonSerializable {
         
         if(empty($args)){
             if(empty($data[$field]))
-                return !empty($value);
+            return !(null === $value || '' === $value);
         }else{
             if(!in_array($data[$field] ?? null, $args)){
-                return !empty($value);
+                return !(null === $value || '' === $value);
             }
         }
         return true;
