@@ -21,6 +21,8 @@ class Validator implements JsonSerializable {
         'boolean'=>':?必须是逻辑类型.',
         'mobile'=>':?手机号码格式错误.',
         'idcard'=>':?证件号码格式错误.',
+        'chs'=>':?只允许中文、字母、数字 _-.',
+        'ens'=>':?只允许字母、数字、_-.',
         'zip'=>':?邮政编码格式错误.',
         'ean13'=>':?商品条码格式错误.',
         'in'=>':?的值无效.',
@@ -38,6 +40,7 @@ class Validator implements JsonSerializable {
         'requireIfNot'=>':?为必填项.',
         'array'=>':?必须是数组',
         'list'=>':?必须是列表',
+        'intlist'=>':?必须是整数列表',
     ];
 
     protected static $cache = [];
@@ -217,6 +220,18 @@ class Validator implements JsonSerializable {
         return preg_match('/(^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$)|(^[1-9]\d{5}\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}$)/', strval($value))?true:false;
     }
 
+    # 中文、数字、字母
+    protected static function chs($value, array $data, ?array $args) : bool {
+        if(null === $value || '' === $value) return true;
+        return preg_match('/^[\x{4e00}-\x{9fa5}a-zA-Z0-9]+$/u', $value)?true:false;
+    }
+
+    # 字母、数字、下划线
+    protected static function ens($value, array $data, ?array $args) : bool {
+        if(null === $value || '' === $value) return true;
+        return preg_match('/^[a-zA-Z0-9-_]+$/u', $value)?true:false;
+    }
+
     # 数字(包含浮点和整数)验证
     protected static function number($value, $data, ?array $args) : bool {
         if(null === $value || ''=== $value) return true;
@@ -248,6 +263,18 @@ class Validator implements JsonSerializable {
         if(is_array($value) && array_is_list($value)){
             if(isset($args[0]))
                 return count($value) >= intval($args[0]);
+            return true;
+        }
+        return false;
+    }
+
+    # 整数列表验证
+    protected static function intlist($value, $data, ?array $args) : bool {
+        if(null === $value || ''=== $value) return true;
+        if(is_array($value) && array_is_list($value)){
+            foreach($value as $v){
+                if(!is_integer($v)) return false;
+            }
             return true;
         }
         return false;
