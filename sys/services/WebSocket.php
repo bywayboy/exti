@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace sys\services;
 
-use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\WebSocket\CloseFrame;
 use Swoole\WebSocket\Frame;
@@ -19,24 +18,25 @@ abstract class WebSocket {
     /**
      * WebSocket 连接成功
      */
-    protected function afterConnected(Request $request){
-
+    protected function afterConnected() : bool {
+        return true;
     }
     /**
      * WebSocket 连接断开
      **/
-    protected function AfterClose() : void
+    protected function afterClose() : void
     {
-        
     }
 
+    /**
+     * 文本帧到达
+     */
+    protected function OnTextMessage_(string $message) : void {}
 
-    protected function OnTextMessage_(string $message) : void {
-
-    }
-    protected function OnBinaryMessage_(string $message) : void {
-
-    }
+    /**
+     * 二进制帧到达
+     */
+    protected function OnBinaryMessage_(string $message) : void {}
 
     public function execute(Response $response) : bool {
         $this->channel = new \Swoole\Coroutine\Channel($this->queue_size);
@@ -45,20 +45,33 @@ abstract class WebSocket {
             $channel = $this->channel;
             while(true)
             {
-                if($msg = $channel->pop()){
-                    if($channel->errCode === SWOOLE_CHANNEL_CLOSED)
-                        break;
-                    if(is_array($msg)){
-                        $response->push(json_encode($msg, JSON_UNESCAPED_UNICODE));
-                    }else{
+                if($msg = $channel->pop(60)){
+                    
+                    if(is_string($msg) || $msg instanceof \Swoole\WebSocket\Frame){
                         $response->push($msg);
+                    }else{
+                        $frame = new \Swoole\WebSocket\Frame();
+                        $frame->data = json_encode($msg, JSON_UNESCAPED_UNICODE);
+                        $frame->opcode = SWOOLE_WEBSOCKET_OPCODE_TEXT;
+                        $frame->flags  = SWOOLE_WEBSOCKET_FLAG_COMPRESS;
+                        $frame->finish = true;
+                        $response->push($frame);
                     }
                     continue;
                 }
+                if($channel->errCode === SWOOLE_CHANNEL_CLOSED)
+                    break;
             }
         },$response);
 
         $wait_times  = 0;
+
+        # 认证没通过
+        if(false === $this->afterConnected()){
+            $this->channel->close();
+            $response->close();
+            return true;
+        }
 
         # 消息接收循环
         while(true)
@@ -66,7 +79,7 @@ abstract class WebSocket {
             // 0x0 数据附加帧 0x01 文本数据帧 0x02 二进制帧 0x8 连接关闭 0x09 ping 0x0A pong 
             $frame = $response->recv($this->wait_timeout);
             if($frame === ''){
-                $response->close();
+                echo ">> ERROR...\n";
                 break;
             }
 
@@ -75,9 +88,9 @@ abstract class WebSocket {
                 if(110 == $errno){
                     # 超时了
                     if($wait_times++ > $this->wait_times){
-                        $response->close();
                         break;
                     }
+
                     $frame = new Frame();
                     $frame->opcode = WEBSOCKET_OPCODE_PING;
                     $this->channel->push($frame);
@@ -86,7 +99,7 @@ abstract class WebSocket {
             }else{
                 # 关闭帧
                 if($frame instanceof CloseFrame){
-                    $response->close();
+                    echo ">> close frame...\n";
                     break;
                 }else{
                     switch($frame->opcode){
@@ -100,22 +113,43 @@ abstract class WebSocket {
                         $wait_times = 0;
                         break;
                     case WEBSOCKET_OPCODE_PING:
+                        $wait_times = 0;
                         $frame = new Frame();
-                        $frame->opcode = WEBSOCKET_OPCODE_PING;
+                        $frame->opcode = WEBSOCKET_OPCODE_PONG;
                         $this->channel->push($frame);
                         break;
                     }
                 }
             }
         }
+        $response->close();
+        $this->channel->close();
+
 
         # 连接关闭事件
-        $this->AfterClose();
+        $this->afterClose();
         return true;
     }
 
+
+    /**
+     * 动态修改等待超时
+     * @param int $timeout 超时时间 单位 秒
+     */
+    public function setIdleTimeout(int $timeout) {
+        $this->wait_timeout = $timeout;
+    }
+    
+    public function getChannel() :?\Swoole\Coroutine\Channel
+    {
+        return $this->channel ?? null;
+    }
     public function close(){
         $this->channel->close();
         $this->response->close();
+    }
+
+    public function push($msg) {
+        $this->channel->push($msg);
     }
 }

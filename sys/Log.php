@@ -90,7 +90,7 @@ class Log {
                 $s = "\x1B[36m{$logStr}\x1B[0m";
                 break;
             case 'INFO':
-                $s = "\x1B[47;30m{$logStr}\x1B[0;0m";
+                $s = "\x1B[37m{$logStr}\x1B[0m";
                 break;
             default:
                 $s = $logStr."";

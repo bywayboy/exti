@@ -8,7 +8,7 @@ use Throwable;
 
 class JsonWebSocket extends WebSocket
 {
-    protected $service;
+    protected mixed $service;
     protected Request $request;
     
     public function __construct(Request $request, mixed $service)
@@ -23,7 +23,7 @@ class JsonWebSocket extends WebSocket
         $data = json_decode($text, true);
         # 将 action 映射到服务等方法去执行
         if(isset($data['action'])){
-            if($ret = call_user_func_array([$this->service, 'On'.ucfirst($data['action'])], [$data, $this])) {
+            if($ret = call_user_func_array([$this->service, 'On'.ucfirst($data['action'])], [$data, $this->request, $this])) {
                 $this->channel->push($ret);
             }
         }
@@ -33,20 +33,26 @@ class JsonWebSocket extends WebSocket
 
     }
 
-    protected function afterConnected(Request $request){
+    protected function afterConnected() : bool {
         try{
-            call_user_func_array([$this->service, 'afterConnected'], [$this, $request]);
+            return call_user_func_array([$this->service, 'afterConnected'], [$this->request, $this]);
         }catch(Throwable $e){
             # 忽略错误.
         }
     }
 
-    protected function AfterClose(): void
+    /**
+     * WebSocket 连接断开
+     **/
+    protected function afterClose() : void
     {
+        echo "jsonwebsocket::afterClose\n";
+
         try{
-            call_user_func_array([$this->service, 'AfterClose'], [$this]);
+            call_user_func_array([$this->service, 'afterClose'], [$this->request, $this]);
         }catch(Throwable $e){
             # 忽略错误.
+            echo $e->getMessage()."\n".$e->getTraceAsString();
         }
     }
 }

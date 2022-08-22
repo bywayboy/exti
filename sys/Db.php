@@ -301,7 +301,7 @@ class Db{
                     case 'double':
                         $row[$key] = floatval($val);break;
                     case 'object':
-                        $xrow[$key] = json_decode($val, false);break;
+                        $row[$key] = json_decode($val, false);break;
                     case 'json':
                     case 'array':
                         $row[$key] = json_decode($val, true);break;

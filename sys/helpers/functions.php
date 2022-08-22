@@ -209,7 +209,6 @@ if(!function_exists('http_post'))
         }else{
             $result = ['url'=>$url, 'code'=>0, 'return_code'=>$http->errCode];
         }
-
         return $result;
     }
 }
@@ -249,6 +248,35 @@ if(!function_exists('http_get'))
         }
 
         return $result;
+    }
+}
+
+if(!function_exists('dict'))
+{
+    /**
+     * 数组转字典
+     */
+    function dict(?array $records, string $field = 'order_id', bool $toupper = false) : array{
+        $ret = [];
+
+        if(null != $records){
+            if($toupper){
+                foreach ($records as $value) {
+                    $key = $value[$field] ?? false;
+                    if(false !== $key){
+                        $ret[strtoupper($key)] = $value;
+                    }
+                }
+            }else{
+                foreach ($records as $value) {
+                    $key = $value[$field] ?? false;
+                    if(false !== $key){
+                        $ret[$key] = $value;
+                    }
+                }
+            }
+        }
+        return $ret;
     }
 }
 

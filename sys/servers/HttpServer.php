@@ -38,8 +38,8 @@ class HttpServer {
         
         $rewrite = null;
         foreach($config['rewrite'] ?? [] as $key=>$val){
-            $rewrite['patterns'] = $key;
-            $rewrite['replacements'] = $val;
+            $rewrite['patterns'][] = $key;
+            $rewrite['replacements'][] = $val;
         }
 
         # 服务器请求路由映射
@@ -50,7 +50,6 @@ class HttpServer {
             }else{
                 $uri = $request->server['request_uri'];
             }
-            echo "{$uri} \n";
             \preg_match_all("#\/([\-\w\d_]+)*#i", strtolower($uri) , $matches);
             $psr  = array_filter($matches[1]);
 
