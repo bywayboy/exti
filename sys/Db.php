@@ -26,6 +26,7 @@ class Db{
     const SQL_FIND   = 2;
     const SQL_SELECT = 3;
     const SQL_DELETE = 4;
+    const SQL_UNKNOWN = -1;
 
     protected static $pool = [];
     protected $name;
@@ -34,7 +35,12 @@ class Db{
     protected $errStr = '';
     protected $_tableGenPfx = null;
 
+    protected string $dbname;
+
     protected static $cidMark = [];         # 死锁检测机制
+
+    # 字段缓存表
+    protected ?array $_map = null;
 
     # 执行结果保存
     protected $_result = null;
@@ -51,13 +57,14 @@ class Db{
         $this->name = $connection;
 
         $conf = Config::get($this->name);
+        $this->dbname = $conf['dbname'];
         $this->_tableGenPfx = "tables_gen.{$conf['dbname']}.";
         if(empty(self::$pool[$this->name])) {
             static::$pool[$this->name] = new PDOPool((new PDOConfig)
                 ->withHost($conf['dbhost'])
                 ->withPort($conf['dbport'])
                 #  ->withUnixSocket('/tmp/mysql.sock')
-                ->withDbName($conf['dbname'])
+                ->withDbName($this->dbname)
                 ->withCharset($conf['charset'])
                 ->withUsername($conf['dbuser'])
                 ->withPassword($conf['dbpass'])
@@ -191,6 +198,14 @@ class Db{
         return false;
     }
 
+    private function lazyCreateTableStruct(string $tb) : bool {
+        if(0 < $this->execute("SELECT `TABLE_NAME`, `COLUMN_NAME`, `DATA_TYPE`, `COLUMN_COMMENT` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA= ? AND TABLE_NAME= ?", [[$this->dbname,\PDO::PARAM_STR], [$tb,\PDO::PARAM_STR]], Db::SQL_SELECT)){
+            Helpers::lazyAppendFieldsCache($this->dbname, $this->_result);
+            return true;
+        }
+        return false;
+    }
+
     public function table(string $tables) : \sys\SqlBuilder
     {
         $tableArr = array_map(function($v){return trim($v," \t\n\r");}, explode(',', $tables));
@@ -199,13 +214,18 @@ class Db{
         $table = $tableArr[0];
         foreach($tableArr as $tb){
             $typeArr = Config::get($prefix . $tb);
+            
             if(empty($typeArr)){
-                Log::write("表: {$prefix}{$tb} 没有找到类型定义.".json_encode($typeArr), 'SqlBuilder', 'ERROR');
-                continue;
+                if(!$this->lazyCreateTableStruct($tb)){
+                    Log::write("表: {$prefix}{$tb} 没有找到类型定义.".json_encode($typeArr), 'SqlBuilder', 'ERROR');
+                    continue;
+                }
+                $typeArr = Config::get($prefix . $tb);
             }
             $type = array_merge($typeArr, $type ?? []);
         }
-        return new \sys\SqlBuilder($this, $table, $type ?? []);
+        $this->_map = $type ?? [];
+        return new \sys\SqlBuilder($this, $table, $this->_map);
     }
 
     /**
@@ -278,10 +298,10 @@ class Db{
                 case 'double':
                     $xrow[$key] = floatval($val);break;
                 case 'object':
-                    $xrow[$key] = json_decode($val, false);break;
+                    $xrow[$key] = null===$val ? $val : json_decode($val, false);break;
                 case 'json':
                 case 'array':
-                    $xrow[$key] = json_decode($val, true);break;
+                    $xrow[$key] = null===$val ? $val : json_decode($val, true);break;
                 default:
                     $xrow[$key] = $val;break;
                 }
@@ -301,10 +321,10 @@ class Db{
                     case 'double':
                         $row[$key] = floatval($val);break;
                     case 'object':
-                        $row[$key] = json_decode($val, false);break;
+                        $row[$key] = null===$val ? $val : json_decode($val, false);break;
                     case 'json':
                     case 'array':
-                        $row[$key] = json_decode($val, true);break;
+                        $row[$key] = null===$val ? $val : json_decode($val, true);break;
                     default:
                         $row[$key] = $val;break;
                     }
@@ -319,9 +339,14 @@ class Db{
         return $this->_insid;
     }
 
-    /** 执行批量查询 */
-    public function batch_execute(array $sqls) : int {
-        $params = [];$sqlArr = [];
+   /**
+     * 执行批量查询
+     * @param array $sqls  sql 语句数组.
+     * @param int $retmode 最后一条sql返回类型. Db::SQL_INSERT ...
+     */
+    public function batch_query(array $sqls, int $retmode = Db::SQL_UNKNOWN)
+    {
+        $params = [];$sqlArr = []; $num = count($sqls);
         foreach($sqls as $sql){
             if($sql instanceof SubQuery){
                 $params = [...$params, ...$sql->getParams()];
@@ -330,14 +355,8 @@ class Db{
                 $sqlArr[] = $sql;
             }
         }
+
         $allSql = implode(';', $sqlArr);
-
-        # 该 SQL 用于打印日志.
-        if(Config::get('app.log_sql')){
-            $logSql = SubQuery::buildSql($allSql, $params);
-            Log::write($logSql, 'DBX', 'SQL');
-        }
-
         $conn = $this->getConn();
         try{
             $stmt = $conn->prepare($allSql);
@@ -345,11 +364,44 @@ class Db{
                 $stmt->bindValue(1 + $i, $value[0], $value[1]);
             }
             $stmt->execute();
-            $reti = $stmt->rowCount();
-            if(0 == $this->_trans_level)
-                $this->putConn($conn);
-            $conn = null;
-            return $reti;
+
+            switch($retmode) {
+            case Db::SQL_INSERT:
+                $this->_insid = $conn->lastInsertId();
+                $stmt->closeCursor();
+                if(0 == $this->_trans_level) $this->putConn($conn);
+                return $this->_insid;
+                break;
+            case Db::SQL_FIND:
+                do{
+                    $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    //echo "[DEBUG] ". json_encode($rows) . "\n";
+                }while ($stmt->nextRowset());
+                $stmt->closeCursor();
+                if(0 == $this->_trans_level) $this->putConn($conn);
+                if(is_array($rows) && count($rows) > 0){
+                    $this->_result = $rows[count($rows)-1];
+                    return $this->result($this->map, static::SQL_FIND);
+                }
+                break;
+            case Db::SQL_SELECT:
+                do{
+                    $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    //echo "[DEBUG] ". json_encode($rows) . "\n";
+                }while ($stmt->nextRowset());
+                $stmt->closeCursor();
+                if(0 == $this->_trans_level) $this->putConn($conn);
+                if(is_array($rows) && count($rows) > 0){
+                    $this->_result = $rows;
+                    return $this->result($this->map ?? [], static::SQL_SELECT);
+                }
+                break;
+            default:
+                $affert_rows = $stmt->rowCount();
+                $stmt->closeCursor();
+                if(0 == $this->_trans_level) $this->putConn($conn);
+                return $affert_rows;
+            }
         }catch(PDOException $e){
             if(static::isbreak($e->errorInfo[2])) {
                 $this->putConn(null);
@@ -358,5 +410,6 @@ class Db{
             }
             throw $e; //继续抛出异常.
         }
+        return null;
     }
 }
