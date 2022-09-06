@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace sys;
 
 use Exception;
+use IntlBreakIterator;
 use PDOException;
 use Swoole\Database\PDOPool;
 use Swoole\Database\PDOConfig;
@@ -21,11 +22,11 @@ use sys\db\SubQuery;
 class Db{
 
     # SQL 类型
-    const SQL_INSERT = 0;
-    const SQL_UPDATE = 1;
-    const SQL_FIND   = 2;
-    const SQL_SELECT = 3;
-    const SQL_DELETE = 4;
+    const SQL_INSERT  = 0;
+    const SQL_UPDATE  = 1;
+    const SQL_FIND    = 2;
+    const SQL_SELECT  = 3;
+    const SQL_DELETE  = 4;
     const SQL_UNKNOWN = -1;
 
     protected static $pool = [];
@@ -34,13 +35,10 @@ class Db{
     protected int $_trans_level = 0;
     protected $errStr = '';
     protected $_tableGenPfx = null;
-
-    protected string $dbname;
+    
+    protected string $dbname = '';
 
     protected static $cidMark = [];         # 死锁检测机制
-
-    # 字段缓存表
-    protected ?array $_map = null;
 
     # 执行结果保存
     protected $_result = null;
@@ -55,16 +53,17 @@ class Db{
 
     public function __construct(string $connection = 'db.default') {
         $this->name = $connection;
-
         $conf = Config::get($this->name);
+
         $this->dbname = $conf['dbname'];
-        $this->_tableGenPfx = "tables_gen.{$conf['dbname']}.";
+
+        $this->_tableGenPfx = "tables_gen.{$this->dbname}.";
         if(empty(self::$pool[$this->name])) {
             static::$pool[$this->name] = new PDOPool((new PDOConfig)
                 ->withHost($conf['dbhost'])
                 ->withPort($conf['dbport'])
                 #  ->withUnixSocket('/tmp/mysql.sock')
-                ->withDbName($this->dbname)
+                ->withDbName($conf['dbname'])
                 ->withCharset($conf['charset'])
                 ->withUsername($conf['dbuser'])
                 ->withPassword($conf['dbpass'])
@@ -83,7 +82,6 @@ class Db{
     {
         if(null !== $this->conn){
             $this->putConn($this->conn);
-            $this->conn = null;
         }
     }
 
@@ -101,6 +99,7 @@ class Db{
     protected function getConn() : PDOProxy {
         if($this->conn !== null)
             return $this->conn;
+
         if(false !== ($this->cid = \Swoole\Coroutine::getCid())){
             static::CheckDeadLock($this->cid);
         }
@@ -111,15 +110,19 @@ class Db{
      * @param $conn null|PDOProxy
      */
     protected function putConn(?PDOProxy $conn) {
-        if($this->_trans_level > 0) {
+        if($this->_trans_level > 0 && null !== $conn) {
             Log::write('错误! 您有忘记提交的事务,该次数据库操作将被丢弃!!!!', 'Db','ERROR');
-            throw new Exception('错误! 您有忘记提交的事务, 该次数据库操作将被丢弃!!!!', 0);
+            $this->_trans_level = 0;
+            $conn->rollback();                                # 回滚
+            $conn->setAttribute(\PDO::ATTR_AUTOCOMMIT, 1);    # 开启自动提交
+            # throw new Exception('错误! 您有忘记提交的事务, 该次数据库操作将被丢弃!!!!', 0);
         }
         static::$pool[$this->name]->put($conn);
         # 死锁检测标记删除
         if(false !== $this->cid){
             unset(static::$cidMark[$this->cid]);
         }
+        $this->conn = null;
     }
 
     # 判断是否为连接丢失异常.
@@ -132,9 +135,9 @@ class Db{
         if($this->_trans_level == 1){
             do{
                 try{
-                    $this->conn = $this->getConn();
-                    $this->conn->setAttribute(\PDO::ATTR_AUTOCOMMIT,0);     #关闭自动提交
-                    $this->conn->beginTransaction();                        #开启事务
+                    $this->conn = $conn = $this->getConn();
+                    $conn->setAttribute(\PDO::ATTR_AUTOCOMMIT,0);     # 关闭自动提交
+                    $conn->beginTransaction();                        # 开启事务
                     return;
                 }catch(PDOException $e){
                     if($this->isbreak($e->errorInfo[2])){
@@ -158,12 +161,11 @@ class Db{
                     $this->conn->setAttribute(\PDO::ATTR_AUTOCOMMIT, 1);    # 开启自动提交
                     $this->putConn($this->conn);                            # 交还连接
                 }catch(PDOException $e){
-                    if($this->isbreak($e->errorInfo[2])){
+                    if($this->isbreak($e->errorInfo[2] ?? '')){
                         $this->putConn(null);
                     }else{
                         $this->putConn($this->conn);
                     }
-                    $this->conn = null;
                     Log::write('发生异常: ' . $e->getMessage().'trace:' . $e->getTraceAsString(), __CLASS__, 'ERROR');
                     Log::flush();
                     throw $e;
@@ -180,15 +182,13 @@ class Db{
                     $this->conn->commit();                                  # 回滚
                     $this->conn->setAttribute(\PDO::ATTR_AUTOCOMMIT, 1);    # 开启自动提交
                     $this->putConn($this->conn);                            # 交还连接
-                    $this->conn = null;
                     return true;
                 }catch(PDOException $e){
-                    if($this->isbreak($e->errorInfo[2])){
+                    if($this->isbreak($e->errorInfo[2] ?? '')){
                         $this->putConn(null);
                     }else{
                         $this->putConn($this->conn);
                     }
-                    $this->conn = null;
                     Log::write('发生异常: ' . $e->getMessage().'trace:' . $e->getTraceAsString(), __CLASS__, 'ERROR');
                     Log::flush();
                     throw $e;
@@ -214,7 +214,6 @@ class Db{
         $table = $tableArr[0];
         foreach($tableArr as $tb){
             $typeArr = Config::get($prefix . $tb);
-            
             if(empty($typeArr)){
                 if(!$this->lazyCreateTableStruct($tb)){
                     Log::write("表: {$prefix}{$tb} 没有找到类型定义.".json_encode($typeArr), 'SqlBuilder', 'ERROR');
@@ -224,8 +223,7 @@ class Db{
             }
             $type = array_merge($typeArr, $type ?? []);
         }
-        $this->_map = $type ?? [];
-        return new \sys\SqlBuilder($this, $table, $this->_map);
+        return new \sys\SqlBuilder($this, $table, $type ?? []);
     }
 
     /**
@@ -235,8 +233,8 @@ class Db{
     public function execute(string $sql, array $params, int $operation) : int {
         if(Config::get('app.log_sql')){
             $logSql = SubQuery::buildSql($sql, $params);
-            Log::write($sql . json_encode($params, JSON_PRETTY_PRINT), 'DBX', 'SQL');
-            Log::write($logSql, 'DBX', 'SQL');
+            # Log::write($sql . json_encode($params, JSON_PRETTY_PRINT), 'DBX', 'SQL');
+            Log::write($logSql, 'SQL');
         }
 
         $conn = $this->getConn();
@@ -267,13 +265,12 @@ class Db{
                 default:
                     break;
                 }
-                if(0 == $this->_trans_level)
-                    $this->putConn($conn);
+                if(0 == $this->_trans_level) $this->putConn($conn);
                 $conn = null;
                 return $affert_rows;
             }catch(\PDOException $e){
                 //TODO: 连接断开判断.
-                if(static::isbreak($e->errorInfo[2])){
+                if(static::isbreak($e->errorInfo[2] ?? '')){
                     $this->putConn(null);
                 }else{
                     $this->putConn($conn);
@@ -298,10 +295,10 @@ class Db{
                 case 'double':
                     $xrow[$key] = floatval($val);break;
                 case 'object':
-                    $xrow[$key] = null===$val ? $val : json_decode($val, false);break;
+                    $xrow[$key] = null === $val ? $val : json_decode($val, false);break;
                 case 'json':
                 case 'array':
-                    $xrow[$key] = null===$val ? $val : json_decode($val, true);break;
+                    $xrow[$key] = null === $val ? $val : json_decode($val, true);break;
                 default:
                     $xrow[$key] = $val;break;
                 }
@@ -321,10 +318,10 @@ class Db{
                     case 'double':
                         $row[$key] = floatval($val);break;
                     case 'object':
-                        $row[$key] = null===$val ? $val : json_decode($val, false);break;
+                        $row[$key] = null === $val ? $val : json_decode($val, false);break;
                     case 'json':
                     case 'array':
-                        $row[$key] = null===$val ? $val : json_decode($val, true);break;
+                        $row[$key] = null === $val ? $val : json_decode($val, true);break;
                     default:
                         $row[$key] = $val;break;
                     }
@@ -339,7 +336,12 @@ class Db{
         return $this->_insid;
     }
 
-   /**
+    /**
+     * 执行批量查询
+     * @param array $sqls  sql 语句数组.
+     * @param int $retmode 最后一条sql返回类型.
+     */
+    /**
      * 执行批量查询
      * @param array $sqls  sql 语句数组.
      * @param int $retmode 最后一条sql返回类型. Db::SQL_INSERT ...
@@ -403,7 +405,7 @@ class Db{
                 return $affert_rows;
             }
         }catch(PDOException $e){
-            if(static::isbreak($e->errorInfo[2])) {
+            if(static::isbreak($e->errorInfo[2] ?? '')) {
                 $this->putConn(null);
             } else {
                 $this->putConn($conn);
