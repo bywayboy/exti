@@ -230,7 +230,7 @@ class Db{
      * 执行一条SQL语句. 返回受影响的记录行数, 失败抛出异常.
      * 针对查询语句 有数据返回 获取到的记录数, 无数据返回 0.
      */
-    public function execute(string $sql, array $params, int $operation) : int {
+    public function execute(string $sql, array $params, int $operation) : ?int {
         if(Config::get('app.log_sql')){
             $logSql = SubQuery::buildSql($sql, $params);
             # Log::write($sql . json_encode($params, JSON_PRETTY_PRINT), 'DBX', 'SQL');
@@ -238,17 +238,19 @@ class Db{
         }
 
         $conn = $this->getConn();
-        $affert_rows = 0;
+        $affert_rows = null;
         do{
             try{
                 $stmt = $conn->prepare($sql);
                 foreach($params ?? [] as $i=>$value){
                     $stmt->bindValue(1 + $i, $value[0], $value[1]);
                 }
+                $this->_result = null;
                 $stmt->execute(); # 成功 TRUE 失败返回 FALSE
                 switch($operation){
                 case static::SQL_INSERT:
-                    $this->_insid = intval($conn->lastInsertId());
+                    $this->_insid = $affert_rows = intval($conn->lastInsertId());
+                    break;
                 case static::SQL_UPDATE:
                 case static::SQL_DELETE:
                     $affert_rows = $stmt->rowCount();
@@ -260,13 +262,12 @@ class Db{
                 case static::SQL_FIND:
                     $this->_result = $stmt->fetch();
                     $affert_rows = $this->_result == null ? 0 : 1;
-                    $stmt->closeCursor();
                     break;
                 default:
                     break;
                 }
+                $stmt->closeCursor();
                 if(0 == $this->_trans_level) $this->putConn($conn);
-                $conn = null;
                 return $affert_rows;
             }catch(\PDOException $e){
                 //TODO: 连接断开判断.
@@ -346,7 +347,7 @@ class Db{
      * @param array $sqls  sql 语句数组.
      * @param int $retmode 最后一条sql返回类型. Db::SQL_INSERT ...
      */
-    public function batch_query(array $sqls, int $retmode = Db::SQL_UNKNOWN)
+    public function batch_query(array $sqls, int $retmode = Db::SQL_UNKNOWN) :?int
     {
         $params = [];$sqlArr = []; $num = count($sqls);
         foreach($sqls as $sql){
@@ -365,45 +366,33 @@ class Db{
             foreach($params ?? [] as $i=>$value){
                 $stmt->bindValue(1 + $i, $value[0], $value[1]);
             }
+            $this->_result = null;
             $stmt->execute();
-
+            $affert_rows = null;
             switch($retmode) {
             case Db::SQL_INSERT:
-                $this->_insid = $conn->lastInsertId();
-                $stmt->closeCursor();
-                if(0 == $this->_trans_level) $this->putConn($conn);
-                return $this->_insid;
+                $this->_insid = $affert_rows = $conn->lastInsertId();
                 break;
             case Db::SQL_FIND:
                 do{
-                    $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-                    //echo "[DEBUG] ". json_encode($rows) . "\n";
+                    $this->_result = $stmt->fetch(\PDO::FETCH_ASSOC);
                 }while ($stmt->nextRowset());
-                $stmt->closeCursor();
-                if(0 == $this->_trans_level) $this->putConn($conn);
-                if(is_array($rows) && count($rows) > 0){
-                    $this->_result = $rows[count($rows)-1];
-                    return $this->result($this->map, static::SQL_FIND);
-                }
+                $affert_rows = $this->_result === null ? 0 : 1;
                 break;
             case Db::SQL_SELECT:
                 do{
                     $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-                    //echo "[DEBUG] ". json_encode($rows) . "\n";
                 }while ($stmt->nextRowset());
-                $stmt->closeCursor();
-                if(0 == $this->_trans_level) $this->putConn($conn);
-                if(is_array($rows) && count($rows) > 0){
-                    $this->_result = $rows;
-                    return $this->result($this->map ?? [], static::SQL_SELECT);
-                }
+                $this->_result = $rows ?? null;
+                $affert_rows = null == $this->_result ? 0 : count($this->_result);
                 break;
             default:
                 $affert_rows = $stmt->rowCount();
-                $stmt->closeCursor();
-                if(0 == $this->_trans_level) $this->putConn($conn);
-                return $affert_rows;
+                break;
             }
+            $stmt->closeCursor();
+            if(0 == $this->_trans_level) $this->putConn($conn);
+            return $affert_rows;
         }catch(PDOException $e){
             if(static::isbreak($e->errorInfo[2] ?? '')) {
                 $this->putConn(null);
