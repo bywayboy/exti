@@ -37,6 +37,7 @@ class Db{
     protected $_tableGenPfx = null;
     
     protected string $dbname = '';
+    protected bool $logSql = true;
 
     protected static $cidMark = [];         # 死锁检测机制
 
@@ -56,6 +57,8 @@ class Db{
         $conf = Config::get($this->name);
 
         $this->dbname = $conf['dbname'];
+        $this->logSql = $conf['log_sql'];
+
 
         $this->_tableGenPfx = "tables_gen.{$this->dbname}.";
         if(empty(self::$pool[$this->name])) {
@@ -231,7 +234,7 @@ class Db{
      * 针对查询语句 有数据返回 获取到的记录数, 无数据返回 0.
      */
     public function execute(string $sql, array $params, int $operation) : ?int {
-        if(Config::get('app.log_sql')){
+        if($this->logSql){
             $logSql = SubQuery::buildSql($sql, $params);
             # Log::write($sql . json_encode($params, JSON_PRETTY_PRINT), 'DBX', 'SQL');
             Log::write($logSql, 'SQL');
@@ -337,11 +340,7 @@ class Db{
         return $this->_insid;
     }
 
-    /**
-     * 执行批量查询
-     * @param array $sqls  sql 语句数组.
-     * @param int $retmode 最后一条sql返回类型.
-     */
+
     /**
      * 执行批量查询
      * @param array $sqls  sql 语句数组.
@@ -358,8 +357,14 @@ class Db{
                 $sqlArr[] = $sql;
             }
         }
+        $allSql = implode(";\n", $sqlArr);
 
-        $allSql = implode(';', $sqlArr);
+        # 是否记录SQL日志
+        if($this->logSql){
+            $logSql = SubQuery::buildSql($allSql, $params);
+            Log::write($logSql, 'SQL');
+        }
+
         $conn = $this->getConn();
         try{
             $stmt = $conn->prepare($allSql);
