@@ -309,3 +309,31 @@ if(!function_exists('crontab')){
     return new \sys\CrontabTask($time, $every, $at ,$exec);
     }
 }
+
+
+if(!function_exists('nonceStr')){
+    function nonceStr(int $length = 6) : string{
+        $chars = "0123456789";
+        $len = strlen($chars) - 1;
+        $ret = [];
+        for ( $i = 0; $i < $length; $i++ )  {  
+            $ret[] = $chars[mt_rand(0, $len)];
+        } 
+        return \implode('', $ret);
+    }
+}
+
+if(!function_exists('groupby')){
+    function groupby(?array $records, string $field = 'order_id') : array{
+        $ret = [];
+        if(null != $records){
+            foreach ($records as $value) {
+                $key = $value[$field] ?? false;
+                if(false !== $key){
+                    $ret[$key] = $value;
+                }
+            }
+        }
+        return $ret;
+    }
+}
