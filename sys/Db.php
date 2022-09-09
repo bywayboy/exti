@@ -367,7 +367,10 @@ class Db{
 
         $conn = $this->getConn();
         try{
-            $stmt = $conn->prepare($allSql);
+            # 在批量执行Sql的时候, 中间可能夹杂有 select 的情况.
+            # PDO在执行一条新的SQL的时候, 会检查是否存在尚未拉取完的结果集. 如果存在会报 Cannot execute queries while other unbuffered queries are active. 错误.
+            # 解决方法是 开启查询缓存, 这样 PDO在执行sql的时候会自动拉取所有结果集.
+            $stmt = $conn->prepare($allSql, [\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY=>true]);
             foreach($params ?? [] as $i=>$value){
                 $stmt->bindValue(1 + $i, $value[0], $value[1]);
             }
@@ -380,8 +383,9 @@ class Db{
                 break;
             case Db::SQL_FIND:
                 do{
-                    $this->_result = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    $row = $stmt->fetch(\PDO::FETCH_ASSOC);
                 }while ($stmt->nextRowset());
+                $this->_result = is_array($row) ? $row : null;
                 $affert_rows = $this->_result === null ? 0 : 1;
                 break;
             case Db::SQL_SELECT:
