@@ -17,7 +17,8 @@ class Validator implements JsonSerializable {
 
     protected static array $messages = [
         'require'=>':?为必填项.',
-        'number'=>':?必须为数字.',
+        'number'=>':?必须是数字.',
+        'unumber'=>':?必须是无符号数字.',
         'boolean'=>':?必须是逻辑类型.',
         'mobile'=>':?手机号码格式错误.',
         'idcard'=>':?证件号码格式错误.',
@@ -37,6 +38,7 @@ class Validator implements JsonSerializable {
         'regex'=>':?的格式错误.',
         'confirm'=>':?两次输入不一致.',
         'integer'=>':?的值必须是整数.',
+        'uinteger'=>':?的值必须是无符号整数.',
         'requireIf'=>':?为必填项.',
         'requireIfNot'=>':?为必填项.',
         'array'=>':?必须是数组',
@@ -206,8 +208,13 @@ class Validator implements JsonSerializable {
     # 长度范围验证
     protected static function length($value, array $data, ?array $args):bool{
         if(null === $value || '' === $value) return true;
-        $l = strlen(trim(strval($value)));
-        return  $l >= $args[0] && $l <= $args[1];
+        $len = strlen(trim(strval($value))); $argc = count($args);
+        if(1 == $argc){
+            return $len >= intval($args[0]);
+        }elseif(2 == $argc){
+            return $len >= min($args[0], $args[1]) && $len <= max($args[0], $args[1]);
+        }
+        return false;
     }
 
     # 比较字段验证
@@ -245,10 +252,22 @@ class Validator implements JsonSerializable {
         return preg_match('/^[\+\-]{0,1}\d+(\.\d+){0,1}$/', strval($value)) ? true : false;
     }
 
+    # 无符号数字(包含浮点和整数)验证
+    protected static function unumber($value, $data, ?array $args) : bool {
+        if(null === $value || ''=== $value) return true;
+        return preg_match('/^\d+(\.\d+){0,1}$/', strval($value)) ? true : false;
+    }
+
     # 整数验证
     protected static function integer($value, $data, ?array $args) : bool {
         if(null === $value || '' === $value) return true;
         return preg_match('/^[\+\-]{0,1}\d+$/', strval($value)) ? true : false;
+    }
+
+    # 无符号整数验证
+    protected static function uinteger($value, $data, ?array $args) : bool {
+        if(null === $value || '' === $value) return true;
+        return preg_match('/\d+$/', strval($value)) ? true : false;
     }
 
     # 逻辑验证
