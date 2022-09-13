@@ -235,13 +235,13 @@ class Validator implements JsonSerializable {
     # 数字(包含浮点和整数)验证
     protected static function number($value, $data, ?array $args) : bool {
         if(null === $value || ''=== $value) return true;
-        return preg_match('/^\d+(\.\d+){0,1}$/', strval($value)) ? true : false;
+        return preg_match('/^[\+\-]{0,1}\d+(\.\d+){0,1}$/', strval($value)) ? true : false;
     }
 
     # 整数验证
     protected static function integer($value, $data, ?array $args) : bool {
         if(null === $value || '' === $value) return true;
-        return preg_match('/^\d+$/', strval($value)) ? true : false;
+        return preg_match('/^[\+\-]{0,1}\d+$/', strval($value)) ? true : false;
     }
 
     # 逻辑验证

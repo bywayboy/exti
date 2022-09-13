@@ -233,7 +233,7 @@ class Db{
      * 执行一条SQL语句. 返回受影响的记录行数, 失败抛出异常.
      * 针对查询语句 有数据返回 获取到的记录数, 无数据返回 0.
      */
-    public function execute(string $sql, array $params, int $operation) : ?int {
+    public function execute(string $sql, array $params, int $operation, int $flags = \PDO::FETCH_ASSOC) : ?int {
         if($this->logSql){
             $logSql = SubQuery::buildSql($sql, $params);
             # Log::write($sql . json_encode($params, JSON_PRETTY_PRINT), 'DBX', 'SQL');
@@ -252,18 +252,19 @@ class Db{
                 $stmt->execute(); # 成功 TRUE 失败返回 FALSE
                 switch($operation){
                 case static::SQL_INSERT:
-                    $this->_insid = $affert_rows = intval($conn->lastInsertId());
+                    $this->_insid = intval($conn->lastInsertId());
+                    $affert_rows = $stmt->rowCount();
                     break;
                 case static::SQL_UPDATE:
                 case static::SQL_DELETE:
                     $affert_rows = $stmt->rowCount();
                     break;
                 case static::SQL_SELECT:
-                    $this->_result = $stmt->fetchAll();
+                    $this->_result = $stmt->fetchAll($flags);
                     $affert_rows = $this->_result == null ? 0 : count($this->_result);
                     break;
                 case static::SQL_FIND:
-                    $this->_result = $stmt->fetch();
+                    $this->_result = $stmt->fetch($flags);
                     $affert_rows = $this->_result == null ? 0 : 1;
                     break;
                 default:
@@ -346,7 +347,7 @@ class Db{
      * @param array $sqls  sql 语句数组.
      * @param int $retmode 最后一条sql返回类型. Db::SQL_INSERT ...
      */
-    public function batch_query(array $sqls, int $retmode = Db::SQL_UNKNOWN) :?int
+    public function batch_query(array $sqls, int $retmode = Db::SQL_UNKNOWN, int $flags = \PDO::FETCH_ASSOC) :?int
     {
         $params = [];$sqlArr = []; $num = count($sqls);
         foreach($sqls as $sql){
@@ -383,14 +384,14 @@ class Db{
                 break;
             case Db::SQL_FIND:
                 do{
-                    $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    $row = $stmt->fetch($flags);
                 }while ($stmt->nextRowset());
                 $this->_result = is_array($row) ? $row : null;
                 $affert_rows = $this->_result === null ? 0 : 1;
                 break;
             case Db::SQL_SELECT:
                 do{
-                    $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    $rows = $stmt->fetchAll($flags);
                 }while ($stmt->nextRowset());
                 $this->_result = $rows ?? null;
                 $affert_rows = null == $this->_result ? 0 : count($this->_result);

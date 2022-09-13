@@ -373,6 +373,34 @@ class SqlBuilder {
         return implode('', $sql_parts);
     }
 
+    protected function countSql(string $field = '*')
+    {
+        $sql_parts = ['SELECT COUNT(', $field, ') as `count` FROM `', $this->_table,'`'];
+
+        if(!empty($this->_join)){
+            foreach($this->_join as $join){
+                array_push($sql_parts, $join[0], $join[1], ' ON ', $join[2]);
+            }
+        }
+        if(!empty($this->_where)){
+            $sql_parts[] = ' WHERE ';
+            $sql_parts[] = implode('', $this->_where);
+        }
+
+        if(!empty($this->_group)){
+            $sql_parts[] =  ' GROUP BY ';
+            $sql_parts[] = implode('', $this->_group);
+        }
+
+        if(!empty($this->_order)){
+            $sql_parts[] = ' ORDER BY '. $this->_order .' ';
+        }
+
+        $sql_parts[] = $this->_limit ?? '';
+
+        return implode('', $sql_parts);
+    }
+
     protected function insertSql(array $data) :string {
         $this->_params = [];
         $sql_parts = ['INSERT INTO `', $this->_table, '` SET '];
@@ -460,9 +488,9 @@ class SqlBuilder {
      * @access public
      * @return ?array 成功返回符合条件的结果, 失败或者未找到返回 null;
      */
-    public function find() : ?array {
+    public function find(int $flags = \PDO::FETCH_ASSOC) : ?array {
         $sql = $this->findSql();
-        if(1 == $this->db->execute($sql, [...$this->_params, ...$this->_conds], \sys\Db::SQL_FIND)){
+        if(1 == $this->db->execute($sql, [...$this->_params, ...$this->_conds], \sys\Db::SQL_FIND, $flags)){
             return $this->db->result($this->_types, \sys\Db::SQL_FIND);
         }
         return null;
@@ -473,10 +501,25 @@ class SqlBuilder {
      * @access public
      * @return ?array 成功返回符合条件的结果, 失败或者未找到返回 null;
      */
-    public function select() : ? array {
+    public function select(int $flags = \PDO::FETCH_ASSOC) : ? array {
         $sql = $this->selectSql();
-        if(0 < $this->db->execute($sql, $this->_conds, \sys\Db::SQL_SELECT)){
-            return $this->db->result($this->_types, \sys\Db::SQL_SELECT);
+        if(0 < $this->db->execute($sql, $this->_conds, \sys\Db::SQL_SELECT, $flags)){
+            return $this->db->result($this->_types, \sys\Db::SQL_SELECT, $flags);
+        }
+        return null;
+    }
+
+    /**
+     * 查找符合条件的记录
+     * @access public
+     * @return ?array 成功返回符合条件的结果, 失败或者未找到返回 null;
+     */
+    public function count(string $field = '*') : ? int {
+        $sql = $this->countSql($field);
+        if(0 < $this->db->execute($sql, $this->_conds, \sys\Db::SQL_FIND)){
+            if($result = $this->db->result($this->_types, \sys\Db::SQL_FIND)){
+                return intval($result['count']);
+            }
         }
         return null;
     }

@@ -53,6 +53,7 @@ class HttpServer {
             \preg_match_all("#\/([\-\w\d_]+)*#i", strtolower($uri) , $matches);
             $psr  = array_filter($matches[1]);
 
+
             $num = count($psr);
 
             switch($num){
@@ -63,6 +64,7 @@ class HttpServer {
                 break;
             case 1:
                 # 只有一个类名 默认映射到 index 方法
+                //$class = $ns.ucfirst(array_pop($psr));
                 $class = $ns.str_replace('_', '',ucwords(array_pop($psr),'_'));
                 $method = 'index';
                 break;
@@ -70,7 +72,8 @@ class HttpServer {
                 # 最后一个方法名
                 $method = array_pop($psr);
                 # 剩下的是路径.
-                $class = str_replace('_', '',ucwords(array_pop($psr),'_'));
+                # $class = ucfirst(array_pop($psr));
+                $class = str_replace('_', '', ucwords(array_pop($psr),'_'));
                 if(empty($psr)){
                     $class = $ns.$class;
                 }else{
@@ -78,7 +81,8 @@ class HttpServer {
                 }                        
                 break;
             }
-            Log::write("[CALL] {$class}:{$method}", "APP","INFO");
+            $ipaddr = $request->header['x-real-ip'] ?? $request->server['remote_addr'];
+            Log::write("[CALL] {$class}:{$method} {$ipaddr}", "APP");
 
             try{
                 $m = new $class();

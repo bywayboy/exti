@@ -6,6 +6,8 @@ declare(strict_types=1);
     时间: 2021-09-18
 */
 namespace sys;
+use Swoole\Http\Request;
+use Swoole\Http\Response;
 use Swoole\Coroutine;
 use Swoole\Coroutine\WaitGroup;
 use Throwable;
@@ -19,8 +21,8 @@ class App {
     {
         # 避免连接池污染子进程, 这里新开一个进程处理.
         $process = new \Swoole\Process(function(){
-            //第一步: 初始化表结构.
             if(false === Config::get('app.fields_lazy_cache', true)){
+                //第一步: 初始化表结构.
                 Helpers::CreateDataBaseStructCache();
             }
         }, false, 0, true);

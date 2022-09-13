@@ -88,6 +88,7 @@ abstract class WebSocket {
                 if(110 == $errno){
                     # 超时了
                     if($wait_times++ > $this->wait_times){
+                        # echo ">> TIMEOUT...\n";
                         break;
                     }
 
@@ -125,7 +126,7 @@ abstract class WebSocket {
         $response->close();
         $this->channel->close();
 
-
+        # echo "after close ......\n";
         # 连接关闭事件
         $this->afterClose();
         return true;

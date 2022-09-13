@@ -16,7 +16,8 @@ class SubQuery {
     protected string $_sql;
     protected array $_params;
     protected int $_sqltype; 
-    
+    # protected array $_types = [];
+
     public function __construct(string $sql, array $params, int $type)
     {
         $this->_sqltype = $type;
@@ -37,7 +38,7 @@ class SubQuery {
     }
     /**
      * 获取查询类型
-     * @return int 0 = Db::SQL_INSERT 1 = Db::SQL_UPDATE | 2 = Db::SQL_FIND | 3 = Db::SQL_SELECT | 4 = Db::SQL_DELETE
+     * @return int 0 = Db::SQL_INSERT 1 = Db::SQL_UPDATE | 2 = Db::SQL_FIND | 3 = Db::SQL_SELECT | 4 = Db::SQL_DELETE 5 = Db::SQL_EXP
      */
     public function gettype():int {
         return $this->_sqltype;

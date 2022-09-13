@@ -209,6 +209,7 @@ if(!function_exists('http_post'))
         }else{
             $result = ['url'=>$url, 'code'=>0, 'return_code'=>$http->errCode];
         }
+        echo json_encode($result, JSON_UNESCAPED_UNICODE)."\n";
         return $result;
     }
 }
@@ -335,5 +336,20 @@ if(!function_exists('groupby')){
             }
         }
         return $ret;
+    }
+}
+
+if(!function_exists('safe_idcard')){
+    function safe_idcard(string $szIDNO, $prefix = 4, $suffix= 4){
+        $len = strlen($szIDNO);
+        return str_pad(substr($szIDNO, 0, $prefix) , $len -  ($prefix + $suffix), '*') . substr($szIDNO, $len - ($prefix), $suffix);
+    }
+}
+
+if(!function_exists('safe_name')){
+    function safe_name(string $szName) {
+        $prefix = $suffix = 1;
+        $len = mb_strlen($szName);
+        return str_pad(mb_substr($szName, 0, $prefix) , $len -  ($prefix + $suffix), '*') . mb_substr($szName, $len - ($prefix), $suffix);
     }
 }
