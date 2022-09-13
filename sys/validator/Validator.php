@@ -21,6 +21,7 @@ class Validator implements JsonSerializable {
         'boolean'=>':?必须是逻辑类型.',
         'mobile'=>':?手机号码格式错误.',
         'idcard'=>':?证件号码格式错误.',
+        'nospace'=>':?不允许有空格',
         'chs'=>':?只允许中文、字母、数字 _-.',
         'ens'=>':?只允许字母、数字、_-.',
         'zip'=>':?邮政编码格式错误.',
@@ -218,6 +219,12 @@ class Validator implements JsonSerializable {
     protected static function idcard($value, $data, ?array $args): bool {
         if(null === $value || '' === $value) return true;
         return preg_match('/(^[1-9]\d{5}(18|19|([23]\d))\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$)|(^[1-9]\d{5}\d{2}((0[1-9])|(10|11|12))(([0-2][1-9])|10|20|30|31)\d{3}$)/', strval($value))?true:false;
+    }
+
+    # 空格验证
+    protected static function nospace($value, $data, ?array $args) : bool {
+        if(null === $value || '' === $value) return true;
+        return $value === preg_replace('#\s#', '', strval($value));
     }
 
     # 中文、数字、字母
