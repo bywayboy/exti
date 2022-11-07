@@ -12,7 +12,8 @@ class SqlBuilder {
     protected array $fields = [];       # 检索字段表 SELECT ...
     protected array $_update = [];      # 更新字段表 UPDATE 
     protected array $_join = [];        # 要关联的表名
-    protected $_order;                  # 检索排序条件
+    protected string $_order;           # 检索排序条件
+    protected string $_index;           # 查询索引
     protected array $_group;            # GROUP 支持
     protected $_lock;                   # FOR UPDATE/LOCK IN SHARE MODE
     protected array $_params = [];      # Sql 绑定参数
@@ -256,6 +257,13 @@ class SqlBuilder {
         return $this;
     }
 
+    /**
+     * 强制使用索引查询
+     */
+    public function index(string $index, bool $force = true) : \sys\SqlBuilder {
+        $this->_index = $force ? "FORCE INDEX($index)" :  "USE INDEX($index)";
+        return $this;
+    }
 
     public function field($fields) :\sys\SqlBuilder {
         $this->_fields = is_array($fields)? implode(', ', $fields): $fields;
@@ -312,7 +320,7 @@ class SqlBuilder {
     }
 
     protected function selectSql() {
-        $sql_parts = ['SELECT ', $this->_fields ?? '*', ' FROM `', $this->_table,'`'];
+        $sql_parts = ['SELECT ', $this->_fields ?? '*', ' FROM `', $this->_table,'` ', $this->_index?? ''];
 
         if(!empty($this->_join)){
             foreach($this->_join as $join){
@@ -343,7 +351,7 @@ class SqlBuilder {
     }
 
     protected function findSql(): string {
-        $sql_parts = ['SELECT ', $this->_fields ?? '*', ' FROM `', $this->_table, '`'];
+        $sql_parts = ['SELECT ', $this->_fields ?? '*', ' FROM `', $this->_table,'` ', $this->_index?? ''];
 
         if(!empty($this->_join)){
             foreach($this->_join as $join){
