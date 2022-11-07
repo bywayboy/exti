@@ -4,6 +4,7 @@
     "keywords":["Exti", "Framework", "Swoole"],
     "type": "library",
     "license": "BSD-3-Clause",
+    "version": "0.0.15",
     "authors": [
         {
             "name": "bywayboy",
