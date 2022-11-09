@@ -15,10 +15,12 @@ class BootStarup {
     public static function onWorkerStart(int $serverId, int $workerId) : void
     {
         static::$start_time = time();
+
+        
         echo "Worker BootStrap {$serverId}, {$workerId}\n";
-        Log::write("log write ... test", 'INFO');
-        Log::write("log write ... test", 'ERROR');
-        Log::write("log write ... test", 'SQL');
+        //Log::write("log write ... test", 'INFO');
+        //Log::write("log write ... test", 'ERROR');
+        //Log::write("log write ... test", 'SQL');
     }
 
     /**
