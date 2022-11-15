@@ -59,14 +59,21 @@ class Validator implements JsonSerializable {
             foreach($rules_ as $key=>$rule){
                 @list($key, $name) = explode('|', $key, 2);
                 
-                $expressions = explode('|', $rule);
-                $xexps = [];
-                foreach($expressions as $expression){
-                    $parts = explode(':', $expression,3); # 限制分割3次  规则:参数... :消息
-                    if(count($parts) > 1){
-                        $parts[1] = explode(',', $parts[1]);
+                if(is_string($rule)){
+                    $expressions = explode('|', $rule);
+                    $xexps = [];
+                    foreach($expressions as $expression){
+                        $parts = explode(':', $expression,3); # 限制分割3次  规则:参数... :消息
+                        if(count($parts) > 1){
+                            $parts[1] = explode(',', $parts[1]);
+                        }
+                        $xexps[] = $parts;
                     }
-                    $xexps[] = $parts;
+                }else{
+                    $xexps = [];
+                    foreach($rule as $expression){
+                        $xexps[] = $expression;
+                    }
                 }
                 static::_newrule($rules, $key, $name, $xexps);
             }
