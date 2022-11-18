@@ -96,7 +96,7 @@ class Log {
                 $s = $logStr."";
                 break;
             }
-            echo $s;
+            echo IS_CLI ? $s : $logStr;
     }
     /**
      * 打印日志
