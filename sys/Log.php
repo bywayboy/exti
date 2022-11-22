@@ -69,34 +69,36 @@ class Log {
         #字体颜色：30m-37m 黑、红、绿、黄、蓝、紫、青、白
         #背景颜色：40-47 黑、红、绿、黄、蓝、紫、青、白
         switch($level){
-            case 'ERROR':
-                $s = "\x1B[31m{$logStr}\x1B[0m";
-                break;
-            case 'WARN':
-            case 'WARNING':
-                $s = "\x1B[33m{$logStr}\x1B[0m";
-                break;
-            case 'SUCCESS':
-                $s = "\x1B[32m{$logStr}\x1B[0m";
-                break;
-            case 'NOTICE':
-            case 'SQL':
-                $s = "\x1B[34m{$logStr}\x1B[0m";
-                break;
-            case 'DEBUG':
-                $s = "\x1B[35m{$logStr}\x1B[0m";
-                break;
-            case 'CALL':
-                $s = "\x1B[36m{$logStr}\x1B[0m";
-                break;
-            case 'INFO':
-                $s = "\x1B[37m{$logStr}\x1B[0m";
-                break;
-            default:
-                $s = $logStr."";
-                break;
-            }
-            echo IS_CLI ? $s : $logStr;
+        case 'ERROR':
+            $s = "\x1B[0;31m{$logStr}\x1B[0;0m\n";
+            break;
+        case 'WARN':
+        case 'WARNING':
+            $s = "\x1B[0;33m{$logStr}\x1B[0;0m\n";
+            break;
+        case 'SUCCESS':
+            $s = "\x1B[0;32m{$logStr}\x1B[0;0m\n";
+            break;
+        case 'NOTICE':
+            $s = "\x1B[47;30m{$logStr}\x1B[0;0m\n";
+            break;
+        case 'SQL':
+            $s = "\x1B[0;34m{$logStr}\x1B[0;0m\n";
+            break;
+        case 'DEBUG':
+            $s = "\x1B[0;35m{$logStr}\x1B[0;0m\n";
+            break;
+        case 'CALL':
+            $s = "\x1B[0;36m{$logStr}\x1B[0;0m\n";
+            break;
+        case 'INFO':
+            $s = "\x1B[0;37m{$logStr}\x1B[0;0m\n";
+            break;
+        default:
+            $s = $logStr."\n";
+            break;
+        }
+        echo $s;
     }
     /**
      * 打印日志
@@ -109,10 +111,20 @@ class Log {
         }
         $date = date('Y-m-d H:i:s');
         $cid = \Swoole\Coroutine::getCid() ?? '-';
-        $logstr = "[{$date}][{$cid}][{$level}] {$msg}\n";
+        $logstr = "[{$date}][{$cid}][{$level}] {$msg}";
         
         # 如果是控制台模式 同时打印日志到控制台.
-        IS_CLI && static::console($logstr, $level);
+        if(-1 == $cid){
+            Coroutine::create(function() use($logstr, $level){
+                # 如果是控制台模式 同时打印日志到控制台.
+                IS_CLI && static::console($logstr, $level);
+                null !== static::$channel && static::$channel->push($logstr."\n");
+            });
+        }else{
+            # 如果是控制台模式 同时打印日志到控制台.
+            IS_CLI && static::console($logstr, $level);
+            null !== static::$channel && static::$channel->push($logstr."\n");
+        }
 
         null !== static::$channel && static::$channel->push($logstr);
     }
