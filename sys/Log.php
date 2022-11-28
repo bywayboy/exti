@@ -229,7 +229,7 @@ class Log {
                     }
                 }
             }
-            if(false !== $mem && false !== $fp){
+            if(false !== $mem && false !== $fp && $iCacheSize > 0){
                 # echo "写出内存日志... {$iCacheSize}字节\n";
                 static::toStorage($fp, $mem, $iCacheSize);
             }
