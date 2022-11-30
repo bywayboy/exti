@@ -340,16 +340,52 @@ if(!function_exists('groupby')){
 }
 
 if(!function_exists('safe_idcard')){
-    function safe_idcard(string $szIDNO, $prefix = 4, $suffix= 4){
+    function safe_idcard(string $szIDNO, $prefix = 1, $suffix= 6){
         $len = strlen($szIDNO);
-        return str_pad(substr($szIDNO, 0, $prefix) , $len -  ($prefix + $suffix), '*') . substr($szIDNO, $len - ($prefix), $suffix);
+        return substr($szIDNO, 0, $prefix). str_repeat('*', $len - ($prefix + $suffix)) . substr($szIDNO, $len - ($suffix), $suffix);
     }
 }
 
 if(!function_exists('safe_name')){
-    function safe_name(string $szName) {
-        $prefix = $suffix = 1;
+    function safe_name(string $szName, $prefix = 1, $suffix= 0) {
         $len = mb_strlen($szName);
-        return str_pad(mb_substr($szName, 0, $prefix) , $len -  ($prefix + $suffix), '*') . mb_substr($szName, $len - ($prefix), $suffix);
+        if($suffix > 0){
+            return mb_substr($szName, 0, $prefix). str_repeat('*', $len - ($prefix + $suffix)) .mb_substr($szName, $len - ($prefix), $suffix);
+        }
+        return mb_substr($szName, 0, $prefix) . str_repeat('*', $len - $prefix);
+    }
+}
+
+if(!function_exists('getos')){
+    function getos(array $headers):string{
+        $os_platform  = "Unknown OS";
+        if(isset($headers['x-os'])) return $headers['x-os'];
+		$os_array     = [
+			  '/windows nt 10/i'      =>  'Windows 10',
+			  '/windows nt 6.3/i'     =>  'Windows 8.1',
+			  '/windows nt 6.2/i'     =>  'Windows 8',
+			  '/windows nt 6.1/i'     =>  'Windows 7',
+			  '/windows nt 6.0/i'     =>  'Windows Vista',
+			  '/windows nt 5.2/i'     =>  'Windows Server 2003/XP x64',
+			  '/windows nt 5.1/i'     =>  'Windows XP',
+			  '/windows xp/i'         =>  'Windows XP',
+			  '/windows nt 5.0/i'     =>  'Windows 2000',
+			  '/macintosh|mac os x/i' =>  'Mac OS X',
+			  '/mac_powerpc/i'        =>  'Mac OS 9',
+			  '/linux/i'              =>  'Linux',
+			  '/ubuntu/i'             =>  'Ubuntu',
+			  '/iphone/i'             =>  'iPhone',
+			  '/ipod/i'               =>  'iPod',
+			  '/ipad/i'               =>  'iPad',
+			  '/android/i'            =>  'Android',
+			  '/blackberry/i'         =>  'BlackBerry',
+			  '/webos/i'              =>  'Mobile'
+		];
+
+		foreach ($os_array as $regex => $value)
+			if (preg_match($regex, $headers))
+				$os_platform = $value;
+
+		return $os_platform;
     }
 }
