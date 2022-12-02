@@ -383,7 +383,7 @@ if(!function_exists('getos')){
 		];
 
 		foreach ($os_array as $regex => $value)
-			if (preg_match($regex, $headers))
+			if (preg_match($regex, $value))
 				$os_platform = $value;
 
 		return $os_platform;

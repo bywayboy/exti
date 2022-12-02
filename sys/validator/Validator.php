@@ -107,8 +107,11 @@ class Validator implements JsonSerializable {
     }
 
     # >>> 验证规则开始.
-    protected static function require($value, array $data, ?array $args) : bool{
-        if(null === $value || (is_string($value) && trim($value) === ''))
+    /**
+     * 表单中不存在该字段, 字段值为 null|空文本|空数组 都会视为验证不通过.
+     */
+    protected static function require($value, array $data = null, ?array $args = null) : bool{
+        if(null === $value || (is_string($value) && trim($value) === '') || (is_array($value) && count($value) == 0))
             return false;
         return true;
     }
@@ -116,11 +119,12 @@ class Validator implements JsonSerializable {
     # 用法: requireIf:wanjia,weixin,alipay,mode  当 mode 为 wanjia,weixin,alipay 时 必填
     protected static function requireIf($value, array $data, ?array $args) : bool {
         $field = array_pop($args);
+        $reqVal = isset($data[ $field ]) ? $data[ $field ] : null;
         if(empty($args)){
-            if(!empty($data[$field]))
+            if(static::require($reqVal))
                 return !(null === $value || '' === $value);
         }else{
-            if(in_array($data[$field] ?? null, $args)){
+            if(in_array($reqVal, $args)){
                 return !(null === $value || '' === $value);
             }
         }
@@ -129,13 +133,13 @@ class Validator implements JsonSerializable {
     # 用法: 
     protected static function requireIfNot($value, array $data, ?array $args) : bool {
         $field = array_pop($args);
-        
+        $reqVal = isset($data[ $field ]) ? $data[ $field ] : null;
         if(empty($args)){
-            if(empty($data[$field]))
-            return !(null === $value || '' === $value);
+            if(!static::require($reqVal))
+            return static::require($value);
         }else{
-            if(!in_array($data[$field] ?? null, $args)){
-                return !(null === $value || '' === $value);
+            if(!in_array($reqVal, $args)){
+                return static::require($value);
             }
         }
         return true;
@@ -318,7 +322,7 @@ class Validator implements JsonSerializable {
     private function check_(string $pfx, array $rules, array $data, bool $all) :array {
         $errMsg = [];
         foreach($rules as $key=>$rule){
-            $val = $data[$key] ?? null;
+            $val = isset($data[$key]) ? $data[$key] : null;
             $islist = false;
             # 遍历验证表达式
             foreach($rule['exps'] as $exp){
