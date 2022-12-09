@@ -27,8 +27,6 @@ class Log {
         $dir = APP_ROOT.date("/\\v\\a\\r/\l\o\g_{$workerId}/Ym/");
         if(!is_dir($dir)){
             \mkdir($dir, 0777, true);
-            chown($dir, "php");
-            chgrp($dir, "www");
         }
         return $dir;
     }
