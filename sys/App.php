@@ -106,12 +106,12 @@ class App {
             if($config['enabled']) {
                 $pm->addBatch($config['worker_num'], function($pool, $workerId) use ($module, $config) {
 
-                    Log::start($workerId);
-
                     # 指定工作进程的运行角色
                     if(!empty($config['user']))
                         Helpers::setUser($config['user']);
                     
+                    # 启动日志系统
+                    Log::start($workerId);
                     # 工作进程初始化函数.
                     static::beforeWorkerStart($module, $config['server_id'], $workerId);
 
