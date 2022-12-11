@@ -24,11 +24,12 @@ class Log {
      * 自动创建目录
      */
     protected static function dir($workerId):string{
-        $dir = APP_ROOT.date("/\\v\\a\\r/\l\o\g_{$workerId}/Ym/");
+        $sWorkderId = str_pad((string)$workerId, 2, '0', STR_PAD_LEFT);
+        $dir = APP_ROOT.date("/\\v\\a\\r/\l\o\g/{$sWorkderId}/Ym/");
         if(!is_dir($dir)){
             \mkdir($dir, 0777, true);
-            chown($dir, "php");
-            chgrp($dir, "www");
+            # chown($dir, "php");
+            # chgrp($dir, "www");
         }
         return $dir;
     }
@@ -69,36 +70,34 @@ class Log {
         #字体颜色：30m-37m 黑、红、绿、黄、蓝、紫、青、白
         #背景颜色：40-47 黑、红、绿、黄、蓝、紫、青、白
         switch($level){
-        case 'ERROR':
-            $s = "\x1B[0;31m{$logStr}\x1B[0;0m\n";
-            break;
-        case 'WARN':
-        case 'WARNING':
-            $s = "\x1B[0;33m{$logStr}\x1B[0;0m\n";
-            break;
-        case 'SUCCESS':
-            $s = "\x1B[0;32m{$logStr}\x1B[0;0m\n";
-            break;
-        case 'NOTICE':
-            $s = "\x1B[47;30m{$logStr}\x1B[0;0m\n";
-            break;
-        case 'SQL':
-            $s = "\x1B[0;34m{$logStr}\x1B[0;0m\n";
-            break;
-        case 'DEBUG':
-            $s = "\x1B[0;35m{$logStr}\x1B[0;0m\n";
-            break;
-        case 'CALL':
-            $s = "\x1B[0;36m{$logStr}\x1B[0;0m\n";
-            break;
-        case 'INFO':
-            $s = "\x1B[0;37m{$logStr}\x1B[0;0m\n";
-            break;
-        default:
-            $s = $logStr."\n";
-            break;
-        }
-        echo $s;
+            case 'ERROR':
+                $s = "\x1B[31m{$logStr}\x1B[0m";
+                break;
+            case 'WARN':
+            case 'WARNING':
+                $s = "\x1B[33m{$logStr}\x1B[0m";
+                break;
+            case 'SUCCESS':
+                $s = "\x1B[32m{$logStr}\x1B[0m";
+                break;
+            case 'NOTICE':
+            case 'SQL':
+                $s = "\x1B[34m{$logStr}\x1B[0m";
+                break;
+            case 'DEBUG':
+                $s = "\x1B[35m{$logStr}\x1B[0m";
+                break;
+            case 'CALL':
+                $s = "\x1B[36m{$logStr}\x1B[0m";
+                break;
+            case 'INFO':
+                $s = "\x1B[37m{$logStr}\x1B[0m";
+                break;
+            default:
+                $s = $logStr."";
+                break;
+            }
+            echo $s;
     }
     /**
      * 打印日志
@@ -111,20 +110,10 @@ class Log {
         }
         $date = date('Y-m-d H:i:s');
         $cid = \Swoole\Coroutine::getCid() ?? '-';
-        $logstr = "[{$date}][{$cid}][{$level}] {$msg}";
+        $logstr = "[{$date}][{$cid}][{$level}] {$msg}\n";
         
         # 如果是控制台模式 同时打印日志到控制台.
-        if(-1 == $cid){
-            Coroutine::create(function() use($logstr, $level){
-                # 如果是控制台模式 同时打印日志到控制台.
-                IS_CLI && static::console($logstr, $level);
-                null !== static::$channel && static::$channel->push($logstr."\n");
-            });
-        }else{
-            # 如果是控制台模式 同时打印日志到控制台.
-            IS_CLI && static::console($logstr, $level);
-            null !== static::$channel && static::$channel->push($logstr."\n");
-        }
+        IS_CLI && static::console($logstr, $level);
 
         null !== static::$channel && static::$channel->push($logstr);
     }
@@ -134,7 +123,7 @@ class Log {
         # 日志写入协程
         static::$channel = new Channel(static::MAX_QUEUE_SIZE);
 
-        Coroutine::create(function($channel, int $workerId){
+        Coroutine::create(function($channel, int $workerId) {
             $mem = fopen('php://memory', 'w+');
             if(false === $mem){
                 echo "[ERROR] [{$workerId}] 打开内存缓存失败, 日志功能将被关闭!\n";
@@ -233,6 +222,7 @@ class Log {
                 # echo "写出内存日志... {$iCacheSize}字节\n";
                 static::toStorage($fp, $mem, $iCacheSize);
             }
+
             if(false !== $mem)
                 fclose($mem);
             if(false !== $fp)
@@ -246,6 +236,9 @@ class Log {
      */
     public static function end(){
         if(null !== static::$channel){
+            while(!static::$channel->isEmpty()){
+                Coroutine::sleep(.1);
+            }
             static::$channel->close();
         }
     }

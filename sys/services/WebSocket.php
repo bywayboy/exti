@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace sys\services;
 
 use Swoole\Http\Response;
+use Swoole\Timer;
 use Swoole\WebSocket\CloseFrame;
 use Swoole\WebSocket\Frame;
 
@@ -67,9 +68,13 @@ abstract class WebSocket {
         $wait_times  = 0;
 
         # 认证没通过
-        if(false === $this->afterConnected()){
+        if(false === $this->afterConnected()) {
             $this->channel->close();
-            $response->close();
+            $timerid = Timer::after(20000, function() use($response){
+                $response->close();
+                # 连接关闭事件
+                $this->afterClose();
+            });
             return true;
         }
 
@@ -123,6 +128,13 @@ abstract class WebSocket {
                 }
             }
         }
+
+        # 清理超时关闭定时任务.
+
+        if(isset($timerid)){
+            Timer::clear($timerid);
+        }
+
         $response->close();
         $this->channel->close();
 
@@ -135,16 +147,19 @@ abstract class WebSocket {
 
     /**
      * 动态修改等待超时
-     * @param int $timeout 超时时间 单位 秒
+     * @param int $waitTimeout 超时时间 单位 秒
+     * @param int $waitTimes 发送PING多少次没响应自动关闭连接.
      */
-    public function setIdleTimeout(int $timeout) {
-        $this->wait_timeout = $timeout;
+    public function setIdleTimeout(int $waitTimeout, int $waitTimes = 1) {
+        $this->wait_timeout = max($waitTimeout, 3);
+        $this->wait_times = max($waitTimes, 1);
     }
     
     public function getChannel() :?\Swoole\Coroutine\Channel
     {
         return $this->channel ?? null;
     }
+
     public function close(){
         $this->channel->close();
         $this->response->close();
