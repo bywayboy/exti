@@ -19,14 +19,14 @@ class JsonWebSocket extends WebSocket
 
     protected function OnTextMessage_(string $text) : void {
         # 解码数据
-        echo "OnTextMessage_{$text}\n";
+        # echo "OnTextMessage_{$text}\n";
         $data = json_decode($text, true);
         # 将 action 映射到服务等方法去执行
         if(isset($data['action'])){
             try{
                 $_SEQ = isset($data['_SEQ']) ? $data['_SEQ'] : null;
                 $isDone = false;
-                $result = call_user_func_array([$this->service, 'On'.ucwords($data['action'],'_')], [$data, function(array $data) use($_SEQ) {
+                $result = call_user_func_array([$this->service, 'On'.ucwords($data['action'])], [$data, function(array $data) use($_SEQ) {
                     $data['done'] = false;
                     if(null !== $_SEQ) $data['_SEQ'] = $_SEQ;
                     $this->channel->push($data);

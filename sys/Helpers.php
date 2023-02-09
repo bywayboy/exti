@@ -77,7 +77,8 @@ class Helpers
     public static function CreateDataBaseStructCache():void
     {
         $dbs = \sys\Config::get('db');
-        
+        $changed = false;
+
         foreach($dbs as $confkey=>$dbconf){
             $db = new \sys\Db('db.'.$confkey);
             $dbname = $dbconf['dbname'];
@@ -91,17 +92,22 @@ class Helpers
                         ->field(['TABLE_NAME', 'COLUMN_NAME', 'DATA_TYPE', 'COLUMN_COMMENT'])
                         ->order('TABLE_NAME ASC')
                         ->select();
-            static::lazyAppendFieldsCache($dbname, $records);
+            if(true === static::lazyAppendFieldsCache($dbname, $records)){
+                $changed = true;
+            }
             $db = null;
         }
 
-        \sys\Config::save('tables_gen');
+        # echo "================= ". ($changed === true ? 'true' : 'false')."\n";
+        if($changed){
+            \sys\Config::save('tables_gen');
+        }
     }
 
     /**
      * 缓存制定表结构.
      */
-    public static function lazyAppendFieldsCache(string $dbname, array $fields)
+    public static function lazyAppendFieldsCache(string $dbname, array $fields) : bool
     {
         $types_map = static::$types_map;
         $tables = \sys\Config::get("tables.{$dbname}.structs");
@@ -111,8 +117,8 @@ class Helpers
             $tbname = $item['TABLE_NAME'];
             $colname = $item['COLUMN_NAME'];
             $nv  = $tables[$tbname][$colname] ?? $types_map[ $item['DATA_TYPE'] ];
-            # echo "field: {$tbname} {$colname}  = {$nv}\n";
             if($nv !== ($result[$tbname][$colname] ?? null)){
+                # echo "update field Inof {$colname} \n";
                 $result[$tbname][$colname] = $nv;
                 $changed = true;
             }
@@ -120,6 +126,8 @@ class Helpers
         # 如果发生改变 就保存到内存缓存中.
         if($changed){
             \sys\Config::set('tables_gen.'.$dbname, $result);
+            echo "return true;";
         }
+        return $changed;
     }
 }

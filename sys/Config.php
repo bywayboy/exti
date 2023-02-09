@@ -12,7 +12,7 @@ namespace sys;
  * @method mixed get(string $name, mixed $default) static
  * @method void save(string $name) static
  */
-class Config{
+class Config {
     protected static array $config = [];
 
     protected static function cache(string $name, $value) :void {
@@ -77,8 +77,12 @@ class Config{
         $parts  = explode('.', $name);
         $first = array_shift($parts);
         if(count($parts) > 0){
-            static::root($first);
-            $config = &static::$config[$first];
+            if(!isset(static::$config[$first])){
+                static::root($first);
+                $config = &static::$config[$first];
+            }else{
+                $config = &static::$config[$first];
+            }
 
             $last = array_pop($parts);
             if(!empty($parts)){
@@ -111,7 +115,7 @@ class Config{
                 }
                 return "[\n" . implode(",\n", $r) . "\n" . $indent . "]";
             case "boolean":
-                return $var ? "TRUE" : "FALSE";
+                return $var ? "true" : "false";
             default:
                 return var_export($var, TRUE);
         }
@@ -125,7 +129,6 @@ class Config{
     public static function save(string $name) :void {
 
         $file = APP_ROOT."/config/". $name . '.php';
-
         $codeStr = static::var_export_short(static::$config[$name] ?? []);
         $date = date('Y-m-d H:i:s');
         $content = "<?php\n// 请勿擅自修改!!! 数据生成时间: {$date}\n\nreturn {$codeStr};\n";

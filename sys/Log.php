@@ -66,7 +66,7 @@ class Log {
         null !== static::$channel && static::$channel->push(0);
     }
 
-    protected static function console(string $logStr, string $level) : void {
+    public static function console(string $logStr, string $level) : void {
         #字体颜色：30m-37m 黑、红、绿、黄、蓝、紫、青、白
         #背景颜色：40-47 黑、红、绿、黄、蓝、紫、青、白
         switch($level){

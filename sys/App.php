@@ -55,7 +55,7 @@ class App {
                     }
                 }
             }catch(Throwable $e){
-                echo 'ERROR: ' . $e->getMessage() . "\n";
+                Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),"\n"]),'ERROR');
             }
             $wg->done();
         });
@@ -78,7 +78,7 @@ class App {
                 $class = "\\app\\{$module}\\BootStarup::onWorkerShutdown";
                 call_user_func_array($class, [$serverId, $workerId]);
             }catch(Throwable $e){
-                echo 'ERROR: ' . $e->getMessage() . "\n";
+                Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),"\n"]),'ERROR');
             }
             $wg->done();
         });
@@ -105,13 +105,14 @@ class App {
         foreach($modules_conf as $module=>$config) {
             if($config['enabled']) {
                 $pm->addBatch($config['worker_num'], function($pool, $workerId) use ($module, $config) {
+                    $workerId += $config['worker_id'];
 
                     # 指定工作进程的运行角色
                     if(!empty($config['user']))
                         Helpers::setUser($config['user']);
                     
-                    # 启动日志系统
                     Log::start($workerId);
+
                     # 工作进程初始化函数.
                     static::beforeWorkerStart($module, $config['server_id'], $workerId);
 

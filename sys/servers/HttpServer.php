@@ -53,7 +53,6 @@ class HttpServer {
             \preg_match_all("#\/([\-\w\d_]+)*#i", strtolower($uri) , $matches);
             $psr  = array_filter($matches[1]);
 
-
             $num = count($psr);
 
             switch($num){
@@ -82,7 +81,7 @@ class HttpServer {
                 break;
             }
             $ipaddr = $request->header['x-real-ip'] ?? $request->server['remote_addr'];
-            Log::write("[CALL] {$class}:{$method} {$ipaddr}", "APP");
+            Log::write("{$class}:{$method} {$ipaddr}", "CALL");
 
             try{
                 $m = new $class();
@@ -130,6 +129,7 @@ class HttpServer {
                     'title'=>'发生错误',
                     'message'=>$e->getMessage(),
                     'file'=>substr($e->getFile(), strlen(dirname(SITE_ROOT)) + 1),
+                    'mapfile'=>$file,
                     'class'=>$class,
                     'type'=>addcslashes($e::class, "\\"),
                     'line'=>$e->getLine(),
@@ -138,17 +138,7 @@ class HttpServer {
                 $view->output($response,[
                     'root'=>dirname(SITE_ROOT),
                 ]);
-                /*
-                $err = [
-                    '<!DOCTYPE html>', '<html><head><title>404 Not Found</title><meta charset="utf-8"></head><body>',
-                    '<h3>ERROR: '.$e->getMessage(), '</h3><div>file:', 
-                    $e->getFile(), ' : ', $e->getLine().'</div>',
-                    '<div>Class: ', $class, '</div><pre style="line-height:150%;">',
-                    "TraceBack:", $e->getTraceAsString(),
-                    '</pre></body></html>'
-                ];
-                $response->end(\implode("\n", $err));
-                */
+                Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),"\n"]),'ERROR');
             }
         });
     }

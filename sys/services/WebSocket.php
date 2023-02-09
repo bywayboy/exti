@@ -10,11 +10,12 @@ use Swoole\WebSocket\Frame;
 
 abstract class WebSocket {
     
-    public int $queue_size      = 8;        # 消息发送队列尺寸
+    public int $queue_size      = 20;       # 消息发送队列尺寸
     public int $wait_timeout    = 60;       # 等待超时
     public int $wait_times      = 2;        # 等待超时次数 超过后会被关闭.
 
     protected ?\Swoole\Coroutine\Channel $channel = null;
+    protected bool $running;
 
     /**
      * WebSocket 连接成功
@@ -27,6 +28,7 @@ abstract class WebSocket {
      **/
     protected function afterClose() : void
     {
+        
     }
 
     /**
@@ -41,6 +43,7 @@ abstract class WebSocket {
 
     public function execute(Response $response) : bool {
         $this->channel = new \Swoole\Coroutine\Channel($this->queue_size);
+        $this->running = true;
         \Swoole\Coroutine::create(function(Response $response)
         {
             $channel = $this->channel;
@@ -63,12 +66,14 @@ abstract class WebSocket {
                 if($channel->errCode === SWOOLE_CHANNEL_CLOSED)
                     break;
             }
+            $this->running = false;
         },$response);
 
         $wait_times  = 0;
 
         # 认证没通过
         if(false === $this->afterConnected()) {
+            $this->running = false;
             $this->channel->close();
             $timerid = Timer::after(20000, function() use($response){
                 $response->close();
@@ -79,7 +84,7 @@ abstract class WebSocket {
         }
 
         # 消息接收循环
-        while(true)
+        while($this->running)
         {
             // 0x0 数据附加帧 0x01 文本数据帧 0x02 二进制帧 0x8 连接关闭 0x09 ping 0x0A pong 
             $frame = $response->recv($this->wait_timeout);
@@ -136,7 +141,10 @@ abstract class WebSocket {
         }
 
         $response->close();
-        $this->channel->close();
+
+        if($this->running){
+            $this->channel->close();
+        }
 
         # echo "after close ......\n";
         # 连接关闭事件
@@ -161,8 +169,9 @@ abstract class WebSocket {
     }
 
     public function close(){
+        # channel 关闭后会标记 $this->running = false
+        # $this->running 标记为false后 网络事件等待循环会自动退出.
         $this->channel->close();
-        $this->response->close();
     }
 
     public function push($msg) {

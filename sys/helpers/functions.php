@@ -173,6 +173,36 @@ if(!function_exists('array_is_list')){
     }
 }
 
+if(!function_exists('array_compare')){
+    /**
+     * 递归比较两个 array 是否相同.
+     */
+    function array_compare(array|object $ov, array|object $nv):bool
+    {
+        echo "compare ".json_encode($ov) . "<==>" . json_encode($nv) . "\n";
+        $unikeys = array_unique(array_merge(array_keys($ov),array_keys($nv)));
+        foreach($unikeys as $key){
+            if(isset($ov[$key]) && isset($nv[$key])){
+                if((is_array($ov[$key]) || is_object($ov[$key])) && (is_array($nv[$key]) || is_array($nv[$key]))){
+                    if(true == array_compare((array)$ov[ $key ], (array)$nv[ $key ]))
+                        continue;
+                    return false;
+                }else{
+                    if($ov[$key] === $nv[ $key ]){
+                        continue;
+                    }elseif(is_numeric($nv[ $key ]) || is_numeric($ov[ $key ])) {
+                        if(abs($nv[ $key ] - $ov[$key]) < 0.00000000001){
+                            continue;
+                        }
+                        return false;
+                    }
+                }
+            }
+            return false;
+        }
+        return true;
+    }
+}
 
 if(!function_exists('http_post'))
 {
