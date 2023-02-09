@@ -38,6 +38,7 @@ class Db{
     
     protected string $dbname = '';
     protected bool $logSql = true;
+    protected int|bool $cid = false;
 
     protected static $cidMark = [];         # 死锁检测机制
 
@@ -298,7 +299,6 @@ class Db{
                 case 'integer':
                     $xrow[$key] = intval($val);break;
                 case 'double':
-                case 'float':
                     $xrow[$key] = floatval($val);break;
                 case 'object':
                     $xrow[$key] = null === $val ? $val : json_decode($val, false);break;
@@ -322,7 +322,6 @@ class Db{
                     case 'integer':
                         $row[$key] = intval($val);break;
                     case 'double':
-                    case 'float':
                         $row[$key] = floatval($val);break;
                     case 'object':
                         $row[$key] = null === $val ? $val : json_decode($val, false);break;
