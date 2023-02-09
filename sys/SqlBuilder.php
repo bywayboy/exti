@@ -9,11 +9,10 @@ class SqlBuilder {
     protected $_table;                  # 要构造SQL的表名
     protected array $_where = [];       # WHERE 条件数组
     protected array $_types = [];       # 字段类型表
-    protected array $fields = [];       # 检索字段表 SELECT ...
     protected array $_update = [];      # 更新字段表 UPDATE 
     protected array $_join = [];        # 要关联的表名
-    protected array $_fields = [];      # 字段表
     protected $_order;                  # 检索排序条件
+    protected string $_fields;          # 字段表
     protected string $_index;           # 查询索引
     protected string $_limit;          # 限制
     protected array $_group;            # GROUP 支持
