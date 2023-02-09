@@ -21,6 +21,7 @@ class Validator implements JsonSerializable {
         'unumber'=>':?必须是无符号数字.',
         'boolean'=>':?必须是逻辑类型.',
         'mobile'=>':?手机号码格式错误.',
+        'tel'=>':?电话号码格式错误.',
         'idcard'=>':?证件号码格式错误.',
         'nospace'=>':?不允许有空格',
         'chs'=>':?只允许中文、字母、数字 _-.',
@@ -162,6 +163,16 @@ class Validator implements JsonSerializable {
         return preg_match('/^1[3-9]\d{9}$/', $value)?true:false;
     }
 
+    protected static function tel($value, array $data, ?array $args) : bool {
+        if(null === $value || '' === $value) return true;
+        
+        # 1xxxxxxxxx  手机号码格式
+        # 0730-xxxxxxx 区号+电话格式
+        # xxxxxxxx  电话号码格式
+        if(preg_match('/^(1[3-9]\d{9})|(\d{3,4}\-\d{7,8})|(\d{7,8})$/', $value)) return true;
+        return false;
+    }
+
     protected static function zip($value, array $data, ?array $args): bool {
         if(null === $value || '' === $value) return true;
         return preg_match('/\d{6}/', $value)?true:false;
@@ -207,19 +218,19 @@ class Validator implements JsonSerializable {
     # 最小长度限制验证.
     protected static function minlength($value, array $data, ?array $args):bool{
         if(null === $value || '' === $value) return true;
-        return strlen(trim(strval($value))) >= $args[0];
+        return mb_strlen(trim(strval($value)), 'UTF-8') >= $args[0];
     }
 
     # 最大长度限制验证
     protected static function maxlength($value, array $data, ?array $args):bool{
         if(null === $value || '' === $value) return true;
-        return strlen(trim(strval($value))) <= $args[0];
+        return mb_strlen(trim(strval($value)), 'UTF-8') <= $args[0];
     }
 
     # 长度范围验证
     protected static function length($value, array $data, ?array $args):bool{
         if(null === $value || '' === $value) return true;
-        $len = strlen(trim(strval($value))); $argc = count($args);
+        $len = mb_strlen(trim(strval($value)), 'UTF-8'); $argc = count($args);
         if(1 == $argc){
             return $len >= intval($args[0]);
         }elseif(2 == $argc){
@@ -325,15 +336,17 @@ class Validator implements JsonSerializable {
             $val = isset($data[$key]) ? $data[$key] : null;
             $islist = false;
             # 遍历验证表达式
-            foreach($rule['exps'] as $exp){
-                @list($express, $args, $msg) = $exp;
-                if(!$bResult = static::$express($val, $data, $args ?? null)){
-                    $errMsg[] = $msg ?? str_replace(':?', $rule['name'] ?? $pfx.$key, static::$messages[$express]);
+            if(isset($rule['exps'])){
+                foreach($rule['exps'] as $exp){
+                    @list($express, $args, $msg) = $exp;
+                    if(!$bResult = static::$express($val, $data, $args ?? null)){
+                        $errMsg[] = $msg ?? str_replace(':?', $rule['name'] ?? $pfx.$key, static::$messages[$express]);
+                    }
+                    if(!$all && !$bResult){
+                        return $errMsg;
+                    }
+                    if($express ==='list') $islist = true;
                 }
-                if(!$all && !$bResult){
-                    return $errMsg;
-                }
-                if($express ==='list') $islist = true;
             }
 
             # 有递归验证规则.
