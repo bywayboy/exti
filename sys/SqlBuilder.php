@@ -12,8 +12,10 @@ class SqlBuilder {
     protected array $fields = [];       # 检索字段表 SELECT ...
     protected array $_update = [];      # 更新字段表 UPDATE 
     protected array $_join = [];        # 要关联的表名
-    protected string $_order;           # 检索排序条件
+    protected array $_fields = [];      # 字段表
+    protected $_order;                  # 检索排序条件
     protected string $_index;           # 查询索引
+    protected string $_limit;          # 限制
     protected array $_group;            # GROUP 支持
     protected $_lock;                   # FOR UPDATE/LOCK IN SHARE MODE
     protected array $_params = [];      # Sql 绑定参数
@@ -49,12 +51,7 @@ class SqlBuilder {
         }
     }
 
-    public function __toString() :string {
-        return $this->sql ?? 'fuck you ';
-    }
-
-
-    protected function  _parseValue($value, string $type)
+    protected function _parseValue($value, string $type)
     {
         if(static::$tjson_[$type] ?? false)
             return [json_encode($value), \PDO::PARAM_STR];
@@ -423,7 +420,7 @@ class SqlBuilder {
                     $values[] = '`' . $key . '` = '. strval($val);
                 }else{
                     $values[] = '`' . $key . '` = ?' ;
-                    $this->_params[] = $this->_parseValue($val, $this->_type[$key] ?? $rawtype);
+                    $this->_params[] = $this->_parseValue($val, $this->_types[$key] ?? $rawtype);
                 }
             }
         }
@@ -443,7 +440,7 @@ class SqlBuilder {
                     $update[] = '`' . $key . '` = '. strval($val);
                 }else{
                     $update[] = '`' . $key . '` = ?' ;
-                    $this->_params[] = $this->_parseValue($val, $this->_type[$key] ?? $rawtype);
+                    $this->_params[] = $this->_parseValue($val, $this->_types[$key] ?? $rawtype);
                 }
             }
         }
