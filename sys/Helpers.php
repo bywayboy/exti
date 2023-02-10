@@ -117,8 +117,9 @@ class Helpers
             $tbname = $item['TABLE_NAME'];
             $colname = $item['COLUMN_NAME'];
             $nv  = $tables[$tbname][$colname] ?? $types_map[ $item['DATA_TYPE'] ];
-            if($nv !== ($result[$tbname][$colname] ?? null)){
-                # echo "update field Inof {$colname} \n";
+
+            if(!isset($result[$tbname][$colname]) || $nv !== ($result[$tbname][$colname])){
+                # echo "update field Info {$colname} ".(isset($result[$tbname][$colname])? $result[$tbname][$colname] : 'null')." ==> {$nv}\n";
                 $result[$tbname][$colname] = $nv;
                 $changed = true;
             }
@@ -126,7 +127,7 @@ class Helpers
         # 如果发生改变 就保存到内存缓存中.
         if($changed){
             \sys\Config::set('tables_gen.'.$dbname, $result);
-            echo "return true;";
+            # echo "return true;";
         }
         return $changed;
     }

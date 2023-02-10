@@ -176,13 +176,14 @@ if(!function_exists('array_is_list')){
 if(!function_exists('array_compare')){
     /**
      * 递归比较两个 array 是否相同.
+     * @return bool 相同返回 true 不同返回 false
      */
     function array_compare(array|object $ov, array|object $nv):bool
     {
         echo "compare ".json_encode($ov) . "<==>" . json_encode($nv) . "\n";
         $unikeys = array_unique(array_merge(array_keys($ov),array_keys($nv)));
         foreach($unikeys as $key){
-            if(isset($ov[$key]) && isset($nv[$key])){
+            if(array_key_exists($key, $ov) && array_key_exists($key, $nv)){
                 if((is_array($ov[$key]) || is_object($ov[$key])) && (is_array($nv[$key]) || is_array($nv[$key]))){
                     if(true == array_compare((array)$ov[ $key ], (array)$nv[ $key ]))
                         continue;

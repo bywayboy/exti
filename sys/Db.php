@@ -291,22 +291,26 @@ class Db{
         if($stype == static::SQL_FIND){
             if(null == $this->_result) return null;
             foreach($this->_result as $key=>$val){
-                switch($map[$key] ?? 'string'){
-                case 'string':
-                    $xrow[$key] = $val;break;
-                case 'boolean';
-                    $xrow[$key] = $val?true:false;break;
-                case 'integer':
-                    $xrow[$key] = intval($val);break;
-                case 'double':
-                    $xrow[$key] = floatval($val);break;
-                case 'object':
-                    $xrow[$key] = null === $val ? $val : json_decode($val, false);break;
-                case 'json':
-                case 'array':
-                    $xrow[$key] = null === $val ? $val : json_decode($val, true);break;
-                default:
-                    $xrow[$key] = $val;break;
+                if(null !== $val){
+                    switch($map[$key] ?? 'string'){
+                    case 'string':
+                        $xrow[$key] = $val;break;
+                    case 'boolean';
+                        $xrow[$key] = $val?true:false;break;
+                    case 'integer':
+                        $xrow[$key] = intval($val);break;
+                    case 'double':
+                        $xrow[$key] = floatval($val);break;
+                    case 'object':
+                        $xrow[$key] = json_decode($val, false);break;
+                    case 'json':
+                    case 'array':
+                        $xrow[$key] = json_decode($val, true);break;
+                    default:
+                        $xrow[$key] = $val;break;
+                    }
+                }else{
+                    $xrow[$key] = null;
                 }
             }
             return $xrow;
@@ -314,22 +318,26 @@ class Db{
             if(null === $this->_result) return null;
             foreach($this->_result as &$row){
                 foreach($row as $key=>$val){
-                    switch($map[$key] ?? 'string'){
-                    case 'string':
-                        $row[$key] = $val;break;
-                    case 'boolean';
-                        $row[$key] = $val?true:false;break;
-                    case 'integer':
-                        $row[$key] = intval($val);break;
-                    case 'double':
-                        $row[$key] = floatval($val);break;
-                    case 'object':
-                        $row[$key] = null === $val ? $val : json_decode($val, false);break;
-                    case 'json':
-                    case 'array':
-                        $row[$key] = null === $val ? $val : json_decode($val, true);break;
-                    default:
-                        $row[$key] = $val;break;
+                    if(null !== $val){
+                        switch($map[$key] ?? 'string'){
+                        case 'string':
+                            $row[$key] = $val;break;
+                        case 'boolean';
+                            $row[$key] = $val?true:false;break;
+                        case 'integer':
+                            $row[$key] = intval($val);break;
+                        case 'double':
+                            $row[$key] = floatval($val);break;
+                        case 'object':
+                            $row[$key] = null === $val ? $val : json_decode($val, false);break;
+                        case 'json':
+                        case 'array':
+                            $row[$key] = null === $val ? $val : json_decode($val, true);break;
+                        default:
+                            $row[$key] = $val;break;
+                        }
+                    }else{
+                        $row[$key ] = null;
                     }
                 }
             }

@@ -131,7 +131,7 @@ class Config {
         $file = APP_ROOT."/config/". $name . '.php';
         $codeStr = static::var_export_short(static::$config[$name] ?? []);
         $date = date('Y-m-d H:i:s');
-        $content = "<?php\n// 请勿擅自修改!!! 数据生成时间: {$date}\n\nreturn {$codeStr};\n";
+        $content = "<?php\ndeclare(strict_types=1);\n\n// 请勿擅自修改!!! 数据生成时间: {$date}\n\nreturn {$codeStr};\n";
         file_put_contents($file, $content);
     }
 }
