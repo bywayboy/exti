@@ -125,9 +125,8 @@ class Helpers
             }
         }
         # 如果发生改变 就保存到内存缓存中.
-        if($changed){
+        if($changed && (App::getWorkerId() === 0)){
             \sys\Config::set('tables_gen.'.$dbname, $result);
-            # echo "return true;";
         }
         return $changed;
     }

@@ -13,7 +13,10 @@ use Swoole\Coroutine\WaitGroup;
 use Throwable;
 
 class App {
+    protected static int $workerId;
 
+    public static function getWorkerId(): int {return static::$workerId;}
+    
     /**
      * 在 创建工作进程之前执行
      */
@@ -28,9 +31,6 @@ class App {
         }, false, 0, true);
         $process->start();
         $process->wait(true);
-
-        # 清理配置.
-        Config::clear();
     }
 
     /**
@@ -97,6 +97,9 @@ class App {
         # 在这里执行系统启动之前的任务.
         static::beforeWorkerManagerCreate();
 
+        # 允许使用原生函数
+        \Swoole\Runtime::enableCoroutine(true, SWOOLE_HOOK_ALL | SWOOLE_HOOK_NATIVE_CURL);
+
         ini_set('serialize_precision', '15'); # json 浮点设置
 
         $pm = new \Swoole\Process\Manager();
@@ -106,7 +109,7 @@ class App {
             if($config['enabled']) {
                 $pm->addBatch($config['worker_num'], function($pool, $workerId) use ($module, $config) {
                     $workerId += $config['worker_id'];
-
+                    static::$workerId = $workerId;
                     # 指定工作进程的运行角色
                     if(!empty($config['user']))
                         Helpers::setUser($config['user']);

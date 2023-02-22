@@ -180,28 +180,80 @@ if(!function_exists('array_compare')){
      */
     function array_compare(array|object $ov, array|object $nv):bool
     {
-        echo "compare ".json_encode($ov) . "<==>" . json_encode($nv) . "\n";
-        $unikeys = array_unique(array_merge(array_keys($ov),array_keys($nv)));
-        foreach($unikeys as $key){
-            if(array_key_exists($key, $ov) && array_key_exists($key, $nv)){
-                if((is_array($ov[$key]) || is_object($ov[$key])) && (is_array($nv[$key]) || is_array($nv[$key]))){
-                    if(true == array_compare((array)$ov[ $key ], (array)$nv[ $key ]))
+        # echo "compare ".json_encode($ov) . "<==>" . json_encode($nv) . "\n";
+
+        # 列表比较
+        if(is_array($ov) && is_array($nv) && array_is_list($ov) && array_is_list($nv)){
+            if(count($ov) === count($nv)){
+                foreach($ov as $i=>$v){
+                    if(value_compare($v, $nv[$i]))
                         continue;
-                    return false;
-                }else{
-                    if($ov[$key] === $nv[ $key ]){
-                        continue;
-                    }elseif(is_numeric($nv[ $key ]) || is_numeric($ov[ $key ])) {
-                        if(abs($nv[ $key ] - $ov[$key]) < 0.00000000001){
-                            continue;
-                        }
-                        return false;
-                    }
                 }
+                return true;
             }
             return false;
         }
+
+        # 数组比较
+        $ukeys = array_unique(array_merge(array_keys($ov),array_keys($nv)));
+        foreach($ukeys as $key){
+            if(array_key_exists($key, $ov) && array_key_exists($key, $nv)){
+                if(!value_compare($ov[$key], $nv[$key]))
+                    return false;
+            }else{
+                return false;
+            }
+        }
         return true;
+    }
+}
+
+if(!function_exists('value_compare')){
+    /**
+     * 比较2个变量 规则如下:
+     *  1. 浮点, 误差 < 0.00000000001 视作相等.
+     *  2. 文本、整数 值相等, 视作相等.
+     *  3. 列表, 成员数相同,、成员值相同、顺序相同, 视作相等.
+     *  4. 数组, 键=>值 完全同, 视作相等.
+     *  5. null === null, 视作相等.
+     * @return bool 相同返回 true 不同返回 false
+     */
+    function value_compare(mixed $o, mixed $n) : bool {
+        if((is_array($o) || is_object($o)) && (is_array($n) || is_object($n))){
+            return array_compare($o, $n);
+        }
+        if($o === $n) return true;
+        if(is_numeric($o) && is_numeric($n)){
+            if(abs($o - $n) < 0.00000000001)
+                return true;
+        }
+        return false;
+    }
+}
+
+if(!function_exists('fields_compare'))
+{
+    function fields_compare(array $new, array $old, bool $setNull)
+    {
+        $newvalue = null;
+        $oldvalue = null;
+        # 比较值
+
+        $propNamesU = array_keys($old);
+        foreach($propNamesU as $prop){
+            if(array_key_exists($prop, $new)){
+                if(value_compare($new[$prop], $old[$prop])){
+                    continue;
+                }
+                $oldvalue[$prop] = $old[$prop];
+                $newvalue[$prop] = $old[$prop] = $new[$prop];
+            }else if(true === $setNull){
+                $oldvalue[$prop] = $old[$prop];
+                $newvalue[$prop] = $old[$prop] = null;
+            }
+        }
+
+        return $newvalue;
     }
 }
 
@@ -418,5 +470,48 @@ if(!function_exists('getos')){
 				$os_platform = $value;
 
 		return $os_platform;
+    }
+}
+
+
+if(!function_exists('formatDuration'))
+{
+    /**
+     * 将秒数格式化为包含天数、小时数、分钟数和秒数的字符串，用于表示时间长度。
+     *
+     * @param int $seconds 要格式化的秒数，可以为负数表示之前的时间。
+     * @param array $directions 一个包含两个字符串的数组，分别用于表示时间在当前时间之前和之后的文本后缀，默认为 ['之前', '以后']。
+     * @return string 格式化后的时间字符串。
+     */
+    function formatDuration(int $seconds, array $directions = ['之前', '以后']) : string {
+        // 判断时间是否在当前时间之前
+        $isBefore = $seconds < 0;
+    
+        // 取绝对值，方便计算
+        $seconds = abs($seconds);
+
+        // 计算天数
+        $days = floor($seconds / 86400);
+        $seconds %= 86400;
+
+        // 计算小时数
+        $hours = floor($seconds / 3600);
+        $seconds %= 3600;
+
+        // 计算分钟数
+        $minutes = floor($seconds / 60);
+        $seconds %= 60;
+
+        // 组装时间字符串，包括天、小时、分钟和秒
+        $parts = [
+            $days > 0 ? "{$days}天" : '',
+            $days > 0 || $hours > 0 ? "{$hours}小时" : '',
+            $days > 0 || $hours > 0 || $minutes ? "{$minutes}分钟" : '',
+            "{$seconds}秒",
+            $isBefore ? $directions[0] : $directions[1]
+        ];
+
+        // 将各个时间部分连接成最终的时间字符串并返回
+        return implode('', $parts);
     }
 }
