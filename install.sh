@@ -4,13 +4,16 @@ USER=php
 GROUP=www
 CURPATH=$(pwd)
 
+# 指定网站文件入口
+ENTER_FILE=dist/index.php
+
 PHP_VERSION=`/usr/local/php/bin/php -v | grep "^PHP [0-9]" | cut -c 5-7`
 
 # 服务器必须设置的环境变量
 ENV_SECTIONS=("SERVER_NAME" "SERVER_TYPE" "SERVER_ID" "CPUS" "BIND_ADDRESS" "LISTEN_PORT" "GATE_DOMAIN" "GATE_ADDR" "GATE_PORT" "GATE_USE_SSL")
 
 # 服务器必须存在的扩展
-PHP_EXTENSIONS=("swoole.so" "doin.so" "pdo_mysql.so" "exif.so")
+PHP_EXTENSIONS=("swoole.so" "pdo_mysql.so" "exif.so")
 
 
 function CheckEnvConfig() {
@@ -18,10 +21,10 @@ function CheckEnvConfig() {
         echo -e "\033[31m[ERROR] 请先创建环境变量配置文件. scripts/.env \033[0m"
         return 1;
     fi
-    
+
     echo -e "\033[32m===================== 开始检查配置 =====================\033[0m"
     # 检查服务配置
-    
+
     CHECK_PASS=true
     for SECTION_NAME in ${ENV_SECTIONS[@]}
     do
@@ -74,8 +77,8 @@ if [ 0 = $? ]; then
     PHP_CONFIG_FILE=/usr/local/php/etc/${SERVICE_NAME}.ini
     cp -f /usr/local/php/etc/php.ini ${PHP_CONFIG_FILE}
     CheckPHPConfig;
-    
-    # 关闭opcache加速
+
+    # 开启opcache加速
     sed -i 's#opcache.enable=.*#;opcache.enable=1#' ${PHP_CONFIG_FILE}
     sed -i 's#opcache.enable_cli=.*#;opcache.enable_cli=1#' ${PHP_CONFIG_FILE}
 
@@ -90,26 +93,18 @@ if [ 0 = $? ]; then
             sed -i 's#[;]*opcache.enable_cli=1#opcache.enable_cli=1#' ${PHP_CONFIG_FILE}
             sed -i '/^opcache.enable_cli=1/a\opcache.jit=1025' ${PHP_CONFIG_FILE}
             # OpCache JIT 缓存大小
-            sed -i '/^opcache.enable_cli=1/a\opcache.jit_buffer_size=128M' ${PHP_CONFIG_FILE}
+            sed -i '/^opcache.enable_cli=1/a\opcache.jit_buffer_size=512M' ${PHP_CONFIG_FILE}
             # OpCache 最多可以加速多少个文件
             sed -i 's#[;]*opcache.max_accelerated_files=.*#opcache.max_accelerated_files=120000#' ${PHP_CONFIG_FILE}
         ;;
         *)
-            echo -e "\033[31m[ERROR]\033[0m PHP版本: ${PHP_VERSION}, 改PHP版本目前不受支持.";
+            echo -e "\033[31m[ERROR]\033[0m PHP版本: ${PHP_VERSION}, 该PHP版本目前不受支持.";
             exit 0;
         ;;
     esac
 
     echo -e "\033[32m[PASS] 创建热更新监控脚本: run.sh \033[0m"
-    cat <<EOF  > ${CURPATH}/scripts/watch_${SERVICE_NAME}.sh
-#!/bin/bash
 
-/usr/bin/inotifywait -rmq -e create,modify,delete --exclude '^.*(\.sh|\.log|\.txt|\.pid|tables_gen.php)$' ${CURPATH} | while read event
-do
-    echo "\${event}"
-    kill -SIGUSR1 \$(cat ${CURPATH}/var/${SERVICE_NAME}.pid)
-done
-EOF
 
     echo -e "\033[32m[PASS] 创建调试模式运行脚本: run.sh \033[0m"
     cat <<EOF > ${CURPATH}/run.sh
@@ -125,22 +120,13 @@ do
     kill -s 9 \${ZPID}
 done
 
-./scripts/watch_${SERVICE_NAME}.sh &
-
-trap 'onCtrlC' INT
-trap 'onCtrlC' SIGHUP
-
-function onCtrlC () {
-    echo "Clean...";
-    killall watch_${SERVICE_NAME}.sh inotifywait
-}
-
 ulimit -n 262140
-/usr/local/php/bin/php -c ${PHP_CONFIG_FILE} -f public/index.php cli ${SERVICE_NAME}
+${CURPATH}/scripts/initenv.sh
+/usr/local/php/bin/php -c ${PHP_CONFIG_FILE} -f ${ENTER_FILE} cli ${SERVICE_NAME}
 EOF
 
-    echo -e "\033[32m[PASS] 重建重启服务器脚本: reload.sh \033[0m"
-    cat <<EOF > ${CURPATH}/reload.sh
+echo -e "\033[32m[PASS] 重建重启服务器脚本: reload.sh \033[0m"
+cat <<EOF > ${CURPATH}/reload.sh
 #!/bin/bash
 
 kill -USR1 \$(cat ${CURPATH}/var/${SERVICE_NAME}.pid)
@@ -184,7 +170,7 @@ LimitNOFILE=262140
 PIDFile=${CURPATH}/var/${SERVICE_NAME}.pid
 ExecStartPre=${CURPATH}/scripts/initenv.sh
 EnvironmentFile=${CURPATH}/scripts/.env
-ExecStart=/usr/local/php/bin/php -c /usr/local/php/etc/${SERVICE_NAME}.ini -f ${CURPATH}/public/index.php systemd ${SERVICE_NAME}
+ExecStart=/usr/local/php/bin/php -c /usr/local/php/etc/${SERVICE_NAME}.ini -f ${CURPATH}/${ENTER_FILE} systemd ${SERVICE_NAME}
 #ExecStartPost=${CURPATH}/scripts/posttask.sh
 #SuccessExitStatus=0 1
 ExecReload=/bin/kill -USR1 \$MAINPID
@@ -250,7 +236,6 @@ fi
 
 systemctl daemon-reload
 
-chmod a+x ${CURPATH}/scripts/watch_${SERVICE_NAME}.sh
 chmod a+x ${CURPATH}/restart.sh
 chmod a+x ${CURPATH}/run.sh
 chmod a+x ${CURPATH}/reload.sh
