@@ -215,19 +215,20 @@ class Db{
         $tableArr = array_map(function($v){return trim($v," \t\n\r");}, explode(',', $tables));
         $prefix = $this->_tableGenPfx;
 
-        $table = $tableArr[0];
+        $table = $tableArr[0]; $type = [];
+        $defined = Config::get($prefix);
         foreach($tableArr as $tb){
-            $typeArr = Config::get($prefix . $tb);
-            if(empty($typeArr)){
-                if(!$this->lazyCreateTableStruct($tb)){
-                    Log::write("表: {$prefix}{$tb} 没有找到类型定义.".json_encode($typeArr), 'SqlBuilder', 'ERROR');
-                    continue;
-                }
-                $typeArr = Config::get($prefix . $tb);
+            if(isset($defined[$tb])){
+                $type += $defined[$tb];
+                continue;
             }
-            $type = array_merge($typeArr, $type ?? []);
+            if(!$this->lazyCreateTableStruct($tb)){
+                Log::write("表: {$prefix}{$tb} 没有找到类型定义.", 'SqlBuilder', 'ERROR');
+                continue;
+            }
+            $type += Config::get($prefix . $tb, null);
         }
-        return new \sys\SqlBuilder($this, $table, $type ?? []);
+        return new \sys\SqlBuilder($this, $table, $type);
     }
 
     /**

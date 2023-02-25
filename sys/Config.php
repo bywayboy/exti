@@ -46,20 +46,27 @@ class Config {
      */
     public static function get(string $pname = 'app', mixed $default = null)
     {
-        $parts  = explode('.', $pname);
+        $parts  = explode('.', $pname); $numParts = count($parts);
         if(empty($parts))
             return $default;
 
-        $first = array_shift($parts);
-        static::root($first);
-        $config = static::$config[$first];
-        if(!empty($parts)){
-            foreach($parts as $name){
-                if(!isset($config[$name])){
-                    return $default;
+        for($i =0; $i < $numParts; $i ++){
+            $part = $parts[$i];
+            if($i == 0){
+                if(!isset(static::$config[$part])){
+                    $file = APP_ROOT."/config/{$part}.php";
+                    if(!is_file($file))
+                        return $default;
+                    static::$config[$part] = include $file;
+                    if($i == $numParts -  1) return $default;
                 }
-                $config = $config[$name];
+                $config = static::$config[$part];
+                continue;
             }
+            if(!isset($config[$part])){
+                return $default;
+            }
+            $config = $config[$part];
         }
         return $config;
     }
@@ -75,27 +82,44 @@ class Config {
     {
         // 1. 读取原始配置
         $parts  = explode('.', $name);
-        $first = array_shift($parts);
-        if(count($parts) > 0){
-            if(!isset(static::$config[$first])){
-                static::root($first);
-                $config = &static::$config[$first];
-            }else{
-                $config = &static::$config[$first];
+        $numPart = count($parts);
+
+        for($i = 0; $i < $numPart; $i++){
+            $part = $parts[$i];
+
+            if($i == 0){
+                if(!isset(static::$config[$part])){
+                    # 如果新根节点, 需要预先读取文件, 防止全面覆盖.
+                    $file = APP_ROOT."/config/{$part}.php";
+                    if(is_file($file)){
+                        try{
+                            static::$config[$part] = include $file;
+                        }catch(\Throwable $e){
+                            //TODO: 抛出异常.
+                        }
+                    }
+                }
+
+                if(!isset(static::$config[$part])){
+                    if($i == $numPart - 1){
+                        static::$config[$part] = $value;
+                        break;
+                    }
+                    static::$config[$part] = [];
+                }
+                $config = &static::$config[$part];
+                continue;
             }
 
-            $last = array_pop($parts);
-            if(!empty($parts)){
-                foreach($parts as $name){
-                    if(!isset($config[$name]))
-                        $config[$name] = [];
-                    $config = &$config[ $name ];
-                }
+            if($i == $numPart - 1){
+                $config[$part] = $value;
+                break;
             }
-            $config[$last] = $value;
-            return;
+            if(!isset($config[$part])){
+                $config[$part] = [];
+            }
+            $config = &$config[$part]; 
         }
-        static::$config[$first] = $value;
     }
 
     /**
