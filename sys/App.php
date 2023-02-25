@@ -16,7 +16,7 @@ class App {
     protected static int $workerId;
 
     public static function getWorkerId(): int {return static::$workerId;}
-    
+
     /**
      * 在 创建工作进程之前执行
      */
@@ -114,6 +114,7 @@ class App {
                     if(!empty($config['user']))
                         Helpers::setUser($config['user']);
                     
+                    # 启动日志模块
                     Log::start($workerId);
 
                     # 工作进程初始化函数.

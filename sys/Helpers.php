@@ -111,7 +111,7 @@ class Helpers
     {
         $types_map = static::$types_map;
         $tables = \sys\Config::get("tables.{$dbname}.structs");
-        $result = \sys\Config::get("tables_gen.{$dbname}", []);
+        $result = [];
         $changed = false;
         foreach($fields ?? [] as $item){
             $tbname = $item['TABLE_NAME'];
@@ -126,8 +126,10 @@ class Helpers
         }
         # 如果发生改变 就保存到内存缓存中.
         if($changed){
-            \sys\Config::set('tables_gen.'.$dbname, $result);
-            //(App::getWorkerId() === 0) && \sys\Config::save('tables_gen');
+            foreach($result as $tbname=>$fields){
+                \sys\Config::set("tables_gen.{$dbname}.{$tbname}", $fields);
+            }
+            \sys\Config::save('tables_gen');
         }
         return $changed;
     }

@@ -33,8 +33,8 @@ class Db{
     protected $name;
     protected $conn = null;     # 只有在事务模式下, 才会去持有一个PDO连接, 直到对象销毁.
     protected int $_trans_level = 0;
-    protected $errStr = '';
-    protected $_tableGenPfx = null;
+    protected string $errStr = '';
+    protected string $_tableGenPfx;
     
     protected string $dbname = '';
     protected bool $logSql = true;
@@ -61,7 +61,7 @@ class Db{
         $this->logSql = $conf['log_sql'];
 
 
-        $this->_tableGenPfx = "tables_gen.{$this->dbname}.";
+        $this->_tableGenPfx = "tables_gen.{$this->dbname}";
         if(empty(self::$pool[$this->name])) {
             static::$pool[$this->name] = new PDOPool((new PDOConfig)
                 ->withHost($conf['dbhost'])
@@ -223,10 +223,10 @@ class Db{
                 continue;
             }
             if(!$this->lazyCreateTableStruct($tb)){
-                Log::write("表: {$prefix}{$tb} 没有找到类型定义.", 'SqlBuilder', 'ERROR');
+                Log::write("表: {$prefix}.{$tb} 没有找到类型定义.", 'SqlBuilder', 'ERROR');
                 continue;
             }
-            $type += Config::get($prefix . $tb, null);
+            $type += Config::get("{$prefix}.{$tb}", null);
         }
         return new \sys\SqlBuilder($this, $table, $type);
     }

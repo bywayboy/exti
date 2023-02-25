@@ -158,5 +158,12 @@ class Config {
         $content = "<?php\ndeclare(strict_types=1);\n\n// 请勿擅自修改!!! 数据生成时间: {$date}\n\nreturn {$codeStr};\n";
         file_put_contents($file, $content);
     }
+
+    public function reload() : void {
+        foreach(static::$config as $part=>$value){
+            opcache_invalidate(APP_ROOT."/config/". $part . '.php', true);
+        }
+        static::$config = [];
+    }
 }
 
