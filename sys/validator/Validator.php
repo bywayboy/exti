@@ -320,6 +320,8 @@ class Validator implements JsonSerializable {
     protected static function intlist($value, $data, ?array $args) : bool {
         if(null === $value || ''=== $value) return true;
         if(is_array($value) && array_is_list($value)){
+            if(isset($args[0]))
+                return count($value) >= (int)$args[0];
             foreach($value as $v){
                 if(!is_integer($v)) return false;
             }

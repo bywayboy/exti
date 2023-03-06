@@ -195,10 +195,11 @@ if(!function_exists('array_compare')){
         }
 
         # 数组比较
-        $ukeys = array_unique(array_merge(array_keys($ov),array_keys($nv)));
+        $aov = (array)$ov;$anv = (array)$nv;
+        $ukeys = array_unique(array_merge(array_keys($aov),array_keys($anv)));
         foreach($ukeys as $key){
-            if(array_key_exists($key, $ov) && array_key_exists($key, $nv)){
-                if(!value_compare($ov[$key], $nv[$key]))
+            if(array_key_exists($key, $aov) && array_key_exists($key, $anv)){
+                if(!value_compare($aov[$key], $anv[$key]))
                     return false;
             }else{
                 return false;
