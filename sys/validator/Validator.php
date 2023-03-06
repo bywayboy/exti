@@ -309,17 +309,6 @@ class Validator implements JsonSerializable {
     protected static function list($value, $data, ?array $args) : bool {
         if(null === $value || ''=== $value) return true;
         if(is_array($value) && array_is_list($value)){
-            if(isset($args[0]))
-                return count($value) >= intval($args[0]);
-            return true;
-        }
-        return false;
-    }
-
-    # 整数列表验证
-    protected static function intlist($value, $data, ?array $args) : bool {
-        if(null === $value || ''=== $value) return true;
-        if(is_array($value) && array_is_list($value)){
             if(isset($args[0])){
                 $num = count($value); $arg1 = (int)$args[0];
                 if(isset($args[1])){
@@ -328,6 +317,15 @@ class Validator implements JsonSerializable {
                 }
                 return $num >= $arg1;
             }
+            return true;
+        }
+        return false;
+    }
+
+    # 整数列表验证
+    protected static function intlist($value, $data, ?array $args) : bool {
+        if(null === $value || ''=== $value) return true;
+        if(static::list($value, $data, $args)){
             foreach($value as $v){
                 if(!is_integer($v)) return false;
             }
