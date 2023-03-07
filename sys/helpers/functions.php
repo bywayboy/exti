@@ -188,6 +188,7 @@ if(!function_exists('array_compare')){
                 foreach($ov as $i=>$v){
                     if(value_compare($v, $nv[$i]))
                         continue;
+                    return false;
                 }
                 return true;
             }
