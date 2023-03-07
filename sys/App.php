@@ -104,10 +104,9 @@ class App {
 
         $pm = new \Swoole\Process\Manager();
 
-
+        
         foreach($modules_conf as $module=>$config) {
             if($config['enabled']) {
-                Log::console("[{$module}] 启动程数: {$config['worker_num']}\n", 'DEBUG');
                 $pm->addBatch($config['worker_num'], function($pool, $workerId) use ($module, $config) {
                     $workerId += $config['worker_id'];
                     static::$workerId = $workerId;
