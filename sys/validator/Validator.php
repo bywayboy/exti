@@ -269,44 +269,44 @@ class Validator implements JsonSerializable {
     }
 
     # 数字(包含浮点和整数)验证
-    protected static function number($value, $data, ?array $args) : bool {
+    protected static function number($value, array $data, ?array $args) : bool {
         if(null === $value || ''=== $value) return true;
         return preg_match('/^[\+\-]{0,1}\d+(\.\d+){0,1}$/', strval($value)) ? true : false;
     }
 
     # 无符号数字(包含浮点和整数)验证
-    protected static function unumber($value, $data, ?array $args) : bool {
+    protected static function unumber($value, array $data, ?array $args) : bool {
         if(null === $value || ''=== $value) return true;
         return preg_match('/^\d+(\.\d+){0,1}$/', strval($value)) ? true : false;
     }
 
     # 整数验证
-    protected static function integer($value, $data, ?array $args) : bool {
+    protected static function integer($value, array $data, ?array $args) : bool {
         if(null === $value || '' === $value) return true;
         return preg_match('/^[\+\-]{0,1}\d+$/', strval($value)) ? true : false;
     }
 
     # 无符号整数验证
-    protected static function uinteger($value, $data, ?array $args) : bool {
+    protected static function uinteger($value, array $data, ?array $args) : bool {
         if(null === $value || '' === $value) return true;
         return preg_match('/\d+$/', strval($value)) ? true : false;
     }
 
     # 逻辑验证
-    protected static function boolean($value, $data, ?array $args) : bool {
+    protected static function boolean($value, array $data, ?array $args) : bool {
         if(empty($value)) return true; 
         return is_bool($value);
     }
 
 
     # 数组验证
-    protected static function array($value, $data, ?array $args) : bool {
+    protected static function array($value, array $data, ?array $args) : bool {
         if(empty($value)) return true; 
         return is_array($value);
     }
 
     # 列表验证
-    protected static function list($value, $data, ?array $args) : bool {
+    protected static function list($value, array $data, ?array $args) : bool {
         if(null === $value || ''=== $value) return true;
         if(is_array($value) && array_is_list($value)){
             if(isset($args[0])){
@@ -323,7 +323,7 @@ class Validator implements JsonSerializable {
     }
 
     # 整数列表验证
-    protected static function intlist($value, $data, ?array $args) : bool {
+    protected static function intlist($value, array $data, ?array $args) : bool {
         if(null === $value || ''=== $value) return true;
         if(static::list($value, $data, $args)){
             foreach($value as $v){
@@ -397,7 +397,7 @@ class Validator implements JsonSerializable {
      * @access public
      * @return bool true:验证通过 false:验证没通过
      */
-    public function pass() : bool{
+    public function pass() : bool {
         return empty($this->errMsg);
     }
 

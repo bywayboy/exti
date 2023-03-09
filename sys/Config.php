@@ -55,10 +55,11 @@ class Config {
             if($i == 0){
                 if(!isset(static::$config[$part])){
                     $file = APP_ROOT."/config/{$part}.php";
-                    if(!is_file($file))
+                    if(!is_file($file)){
                         return $default;
+                    }
                     static::$config[$part] = include $file;
-                    if($i == $numParts -  1) return $default;
+                    if($i == $numParts -  1) static::$config[$part] ?? $default;
                 }
                 $config = static::$config[$part];
                 continue;
