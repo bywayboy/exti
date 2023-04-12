@@ -43,7 +43,7 @@ class View extends Resp
         #ob_implicit_flush(false);
         ob_start();
         try{
-            include $tplc['root'] . '/' .$this->file;
+            include $tplc['root'] . DIRECTORY_SEPARATOR .$this->file;
         }catch(Throwable $e){
             echo '<p>Error: '.$e->getMessage() . ' at file: ' .$e->getFile() . '('. $e->getLine().')</p>';
         }

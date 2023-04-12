@@ -44,7 +44,7 @@ class HttpServer {
 
         # 服务器请求路由映射
         $ns = "\\app\\{$module}\\controller\\";
-        $this->server->handle('', function(Request $request, Response $response) use($ns, $module, $tpl, $rewrite, $sharePort) {
+        $this->server->handle('', function(Request $request, Response $response) use($ns, $tpl, $rewrite) {
             if($rewrite){
                 $uri = preg_replace($rewrite['patterns'], $rewrite['replacements'], $request->server['request_uri']);
             }else{
