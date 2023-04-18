@@ -180,7 +180,7 @@ if(!function_exists('array_compare')){
      */
     function array_compare(array|object $ov, array|object $nv):bool
     {
-        # echo "compare ".json_encode($ov) . "<==>" . json_encode($nv) . "\n";
+        # echo "compare ".json_encode($ov) . "<==>" . json_encode($nv) . PHP_EOL;
 
         # 列表比较
         if(is_array($ov) && is_array($nv) && array_is_list($ov) && array_is_list($nv)){
@@ -294,7 +294,7 @@ if(!function_exists('http_post'))
         }else{
             $result = ['url'=>$url, 'code'=>0, 'return_code'=>$http->errCode];
         }
-        echo json_encode($result, JSON_UNESCAPED_UNICODE)."\n";
+        echo json_encode($result, JSON_UNESCAPED_UNICODE).PHP_EOL;
         return $result;
     }
 }

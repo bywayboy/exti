@@ -69,7 +69,7 @@ class UdpServer {
                             }
                             $channel->push([$peer, $ret]);
                         }catch(\Throwable $e){
-                            Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),"\n"]),'ERROR');
+                            Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(), PHP_EOL]),'ERROR');
                         }
                     });
                 }

@@ -78,7 +78,7 @@ class Validator implements JsonSerializable {
                 }
                 static::_newrule($rules, $key, $name, $xexps);
             }
-            //echo "生成规则表:".json_encode($rules, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE)."\n";
+            //echo "生成规则表:".json_encode($rules, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE).PHP_EOL;
             $this->rules = $rules;
             if(null !== $CacheKey_){
                 static::$cache[ $CacheKey_ ] = $rules;

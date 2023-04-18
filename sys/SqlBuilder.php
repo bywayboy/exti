@@ -125,7 +125,7 @@ class SqlBuilder {
         $parts = [];
         foreach($values as $i=>$item){
             if($item instanceof \sys\db\SubQuery){
-                # echo json_encode($this->_params)."\n";
+                # echo json_encode($this->_params).PHP_EOL;
                 $this->_appendConds($item->getParams());
                 $parts[] = '(' . $item->getSql() . ')';
             }else{

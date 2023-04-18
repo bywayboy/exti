@@ -138,7 +138,7 @@ class HttpServer {
                 $view->output($response,[
                     'root'=>dirname(SITE_ROOT),
                 ]);
-                Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),"\n"]),'ERROR');
+                Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),PHP_EOL]),'ERROR');
             }
         });
     }

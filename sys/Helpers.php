@@ -98,7 +98,7 @@ class Helpers
             $db = null;
         }
 
-        # echo "================= ". ($changed === true ? 'true' : 'false')."\n";
+        # echo "================= ". ($changed === true ? 'true' : 'false').PHP_EOL;
         if($changed){
             \sys\Config::save('tables_gen');
         }

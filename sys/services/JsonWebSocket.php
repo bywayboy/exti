@@ -52,7 +52,7 @@ class JsonWebSocket extends WebSocket
                     }
                 }
             }catch(\Throwable $e){
-                echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . "\n";
+                echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . PHP_EOL;
             }
         }
     }
@@ -66,7 +66,7 @@ class JsonWebSocket extends WebSocket
             return call_user_func_array([$this->service, 'afterConnected'], [$this->request, $this]);
         }catch(Throwable $e){
             # 忽略错误.
-            echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . "\n";
+            echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . PHP_EOL;
         }
         return false;
     }
@@ -82,7 +82,7 @@ class JsonWebSocket extends WebSocket
             call_user_func_array([$this->service, 'afterClose'], [$this->request, $this]);
         }catch(Throwable $e){
             # 忽略错误.
-            echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . "\n";
+            echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . PHP_EOL;
         }
     }
 }
