@@ -6,8 +6,6 @@ declare(strict_types=1);
     时间: 2021-09-18
 */
 namespace sys;
-use Swoole\Http\Request;
-use Swoole\Http\Response;
 use Swoole\Coroutine;
 use Swoole\Coroutine\WaitGroup;
 use Throwable;
