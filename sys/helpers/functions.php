@@ -180,7 +180,7 @@ if(!function_exists('array_compare')){
      */
     function array_compare(array|object $ov, array|object $nv):bool
     {
-        # echo "compare ".json_encode($ov) . "<==>" . json_encode($nv) . PHP_EOL;
+        # echo "compare ".json_encode($ov) . "<==>" . json_encode($nv) . "\n";
 
         # 列表比较
         if(is_array($ov) && is_array($nv) && array_is_list($ov) && array_is_list($nv)){
@@ -294,7 +294,7 @@ if(!function_exists('http_post'))
         }else{
             $result = ['url'=>$url, 'code'=>0, 'return_code'=>$http->errCode];
         }
-        echo json_encode($result, JSON_UNESCAPED_UNICODE).PHP_EOL;
+        echo json_encode($result, JSON_UNESCAPED_UNICODE)."\n";
         return $result;
     }
 }
@@ -410,13 +410,20 @@ if(!function_exists('nonceStr')){
 }
 
 if(!function_exists('groupby')){
-    function groupby(?array $records, string $field = 'order_id') : array{
+    function groupby(array|object $records, string $field = 'order_id') : array{
         $ret = [];
-        if(null != $records){
+        if(is_array($records)){
             foreach ($records as $value) {
                 $key = $value[$field] ?? false;
                 if(false !== $key){
-                    $ret[$key] = $value;
+                    $ret[$key][] = $value;
+                }
+            }
+        }else{
+            foreach ($records as $value) {
+                $key = $value->$field ?? false;
+                if(false !== $key){
+                    $ret[$key][] = $value;
                 }
             }
         }
@@ -515,5 +522,23 @@ if(!function_exists('formatDuration'))
 
         // 将各个时间部分连接成最终的时间字符串并返回
         return implode('', $parts);
+    }
+}
+
+if(!function_exists('unixmillsecond')){
+    function unixmillsecond() : int{
+        return intval(microtime(true) * 1000);
+    }
+}
+
+if(!function_exists('array_search_callback')){
+    function array_search_callback(array $array, callable $callback) : int {
+        $i = 0;
+        foreach($array as $row){
+            if($callback($row))
+                return $i;
+            $i++;
+        }
+        return -1;
     }
 }

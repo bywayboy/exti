@@ -11,6 +11,7 @@ use sys\Log;
 use sys\servers\http\View;
 
 class HttpServer {
+    public static int $port;
     protected \Swoole\Coroutine\Http\Server $server;
     
     /**
@@ -21,7 +22,7 @@ class HttpServer {
     public function __construct(array $config, string $module, int $workerId)
     {
         $sharePort = $config['share_port'];
-        $listenPort = $sharePort ? $config['listen_port'] : $config['listen_port'] + $workerId;
+        static::$port = $listenPort = $sharePort ? $config['listen_port'] : $config['listen_port'] + $workerId;
 
         $this->server = new \Swoole\Coroutine\Http\Server($config['bind_address'], $listenPort, $config['ssl'], $sharePort);
 
@@ -30,7 +31,9 @@ class HttpServer {
         {
 
         }
-
+        $this->server->set([
+            'websocket_compression'=>true,
+        ]);
         $tpl = array_merge([
             'root'=>dirname(SITE_ROOT) . "/app/{$module}/tpl",
             'cache'=>dirname(SITE_ROOT) . "/var/cache/{$module}"
@@ -41,10 +44,11 @@ class HttpServer {
             $rewrite['patterns'][] = $key;
             $rewrite['replacements'][] = $val;
         }
-
+        $path_domain = $config['path_domain'] ?? false;
         # 服务器请求路由映射
         $ns = "\\app\\{$module}\\controller\\";
-        $this->server->handle('', function(Request $request, Response $response) use($ns, $tpl, $rewrite) {
+        $this->server->handle('', function(Request $request, Response $response) use($ns, $tpl, $path_domain, $rewrite, $sharePort) {
+            
             if($rewrite){
                 $uri = preg_replace($rewrite['patterns'], $rewrite['replacements'], $request->server['request_uri']);
             }else{
@@ -52,12 +56,15 @@ class HttpServer {
             }
             \preg_match_all("#\/([\-\w\d_]+)*#i", strtolower($uri) , $matches);
             $psr  = array_filter($matches[1]);
-
+            if($path_domain){
+                array_shift($psr);
+                //$psr = array_slice($psr, 1);
+            }
             $num = count($psr);
 
             switch($num){
             case 0:
-                # 默认映射到 Index::index
+                # 默认映射到 \app\index\services\Index::index
                 $class = $ns.'Index';
                 $method = 'index';
                 break;
@@ -118,6 +125,7 @@ class HttpServer {
                         return;
                     }
                 }
+                echo (true === $ret ? 'TRUE':'FALSE'). "{$class} {$method}\n";
                 # 无任何返回的时候 返回204 状态
                 $response->setStatusCode(204);
                 $response->end();
@@ -138,7 +146,7 @@ class HttpServer {
                 $view->output($response,[
                     'root'=>dirname(SITE_ROOT),
                 ]);
-                Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),PHP_EOL]),'ERROR');
+                Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),"\n"]),'ERROR');
             }
         });
     }

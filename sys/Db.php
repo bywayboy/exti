@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace sys;
 
-use Exception;
-use IntlBreakIterator;
 use PDOException;
 use Swoole\Database\PDOPool;
 use Swoole\Database\PDOConfig;
@@ -58,7 +56,7 @@ class Db{
         $conf = Config::get($this->name);
 
         $this->dbname = $conf['dbname'];
-        $this->logSql = $conf['log_sql'];
+        $this->logSql = $conf['log_sql'] ?? true;
 
 
         $this->_tableGenPfx = "tables_gen.{$this->dbname}";
@@ -247,6 +245,7 @@ class Db{
         do{
             try{
                 $stmt = $conn->prepare($sql);
+                /** @var \Swoole\Database\PDOStatementProxy $stmt */
                 foreach($params ?? [] as $i=>$value){
                     $stmt->bindValue(1 + $i, $value[0], $value[1]);
                 }
@@ -301,6 +300,7 @@ class Db{
                     case 'integer':
                         $xrow[$key] = intval($val);break;
                     case 'double':
+                    case 'float':
                         $xrow[$key] = floatval($val);break;
                     case 'object':
                         $xrow[$key] = json_decode($val, false);break;
@@ -328,6 +328,7 @@ class Db{
                         case 'integer':
                             $row[$key] = intval($val);break;
                         case 'double':
+                        case 'float':
                             $row[$key] = floatval($val);break;
                         case 'object':
                             $row[$key] = null === $val ? $val : json_decode($val, false);break;
@@ -407,6 +408,8 @@ class Db{
                 $affert_rows = null == $this->_result ? 0 : count($this->_result);
                 break;
             default:
+                do{
+                }while ($stmt->nextRowset());
                 $affert_rows = $stmt->rowCount();
                 break;
             }

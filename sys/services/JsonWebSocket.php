@@ -25,21 +25,28 @@ class JsonWebSocket extends WebSocket
         if(isset($data['action'])){
             try{
                 $_SEQ = isset($data['_SEQ']) ? $data['_SEQ'] : null;
-                $isDone = false;
-                $result = call_user_func_array([$this->service, 'On'.ucwords($data['action'])], [$data, function(array $data) use($_SEQ) {
-                    $data['done'] = false;
-                    if(null !== $_SEQ) $data['_SEQ'] = $_SEQ;
-                    $this->channel->push($data);
-                }, function(array $data) use($_SEQ, $isDone){
-                    if(false === $isDone){
-                        $isDone = true;
-                        $data['done'] = true;
+                $_DONE = false;
+                $sender = function(array $data, bool $done = false) use($_SEQ, &$_DONE) :void {
+                    if(false === $_DONE){
+                        $_DONE = $done;
                         if(null !== $_SEQ) $data['_SEQ'] = $_SEQ;
+                        $data['done'] = $done;
                         $this->channel->push($data);
+                        return;
                     }
-                }, $this]);
+                    // throw new \Exception("Message has been sent!");
+                };
 
-                if(false === $isDone)
+                $result = call_user_func_array([$this->service, 'on'.
+                str_replace(['-','_'],['',''], ucwords($data['action'], "-_\t\r\n\f\v"))
+                ], [
+                    $data,
+                    function(array $data) use($sender){$sender($data, false);}, 
+                    function(array $data) use($sender){$sender($data, true);},
+                    $this
+                ]);
+
+                if(false === $_DONE)
                 {
                     if(is_array($result)){
                         if(!isset($result['_SEQ'])) {
@@ -52,7 +59,7 @@ class JsonWebSocket extends WebSocket
                     }
                 }
             }catch(\Throwable $e){
-                echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . PHP_EOL;
+                echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . "\n";
             }
         }
     }
@@ -66,7 +73,7 @@ class JsonWebSocket extends WebSocket
             return call_user_func_array([$this->service, 'afterConnected'], [$this->request, $this]);
         }catch(Throwable $e){
             # 忽略错误.
-            echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . PHP_EOL;
+            echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . "\n";
         }
         return false;
     }
@@ -82,7 +89,7 @@ class JsonWebSocket extends WebSocket
             call_user_func_array([$this->service, 'afterClose'], [$this->request, $this]);
         }catch(Throwable $e){
             # 忽略错误.
-            echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . PHP_EOL;
+            echo "EROR:" . $e->getMessage() . "\ncode:" . $e->getCode() . "\n File: ". $e->getFile() . " at line:".$e->getLine()."\nTrace: ". $e->getTraceAsString() . "\n";
         }
     }
 }

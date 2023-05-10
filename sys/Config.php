@@ -16,10 +16,7 @@ class Config {
     protected static array $config = [];
 
     protected static function cache(string $name, $value) :void {
-        if(is_array($value))
-            static::$config[$name] = $value;
-        else
-            static::$config[$name] = [];
+        static::$config[$name] = $value;
     }
 
     protected static function root(string $name) {

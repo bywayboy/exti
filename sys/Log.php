@@ -115,7 +115,7 @@ class Log {
         # 如果是控制台模式 同时打印日志到控制台.
         IS_CLI && static::console($logstr, $level);
 
-        null !== static::$channel && static::$channel->push($logstr.PHP_EOL);
+        null !== static::$channel && static::$channel->push($logstr . PHP_EOL);
     }
 
     public static function start(int $workerId){

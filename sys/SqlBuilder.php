@@ -53,7 +53,7 @@ class SqlBuilder {
     protected function _parseValue($value, string $type)
     {
         if(static::$tjson_[$type] ?? false)
-            return [json_encode($value), \PDO::PARAM_STR];
+            return [json_encode($value, JSON_UNESCAPED_UNICODE), \PDO::PARAM_STR];
         return [$value, static::$bindType[ $type ] ?? \PDO::PARAM_STR];
     }
 
@@ -125,7 +125,7 @@ class SqlBuilder {
         $parts = [];
         foreach($values as $i=>$item){
             if($item instanceof \sys\db\SubQuery){
-                # echo json_encode($this->_params).PHP_EOL;
+                # echo json_encode($this->_params)."\n";
                 $this->_appendConds($item->getParams());
                 $parts[] = '(' . $item->getSql() . ')';
             }else{
@@ -294,7 +294,6 @@ class SqlBuilder {
 
     public function inc(string $field, $value) :\sys\SqlBuilder{
         $rawtype = gettype($value);
-        echo "raw = {$rawtype}\n";
         if($rawtype == 'object' && $value instanceof \sys\db\ExpValue){
             $this->_update[] = '`' . $field. '` = `' . $field .'` + ' . strval($value);
         }else{

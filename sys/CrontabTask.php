@@ -84,7 +84,6 @@ class CrontabTask {
         $base = date('Y-m-d H:i:s', $time);
         $haven = strlen($at);
         $at = $haven < 19 ? substr($base, 0, 19 - $haven) . $at : $at;
-        echo "{$at}\n";
         return strtotime($at);
     }
 

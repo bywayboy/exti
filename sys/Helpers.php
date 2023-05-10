@@ -79,26 +79,45 @@ class Helpers
         $dbs = \sys\Config::get('db');
         $changed = false;
 
+        $generated = [];
         foreach($dbs as $confkey=>$dbconf){
             $db = new \sys\Db('db.'.$confkey);
             $dbname = $dbconf['dbname'];
+            if(isset($generated[$dbname]))
+                continue;
+            $generated[$dbname] = true;
 
             $table_names = \sys\Config::get("tables.{$dbname}.table_names");
             if(empty($table_names))
                 continue;
-
-            $records = $db->table('information_schema.COLUMNS')
-                        ->where([['TABLE_SCHEMA','=', $dbname], ['TABLE_NAME','IN', $table_names]])
-                        ->field(['TABLE_NAME', 'COLUMN_NAME', 'DATA_TYPE', 'COLUMN_COMMENT'])
-                        ->order('TABLE_NAME ASC')
-                        ->select();
-            if(true === static::lazyAppendFieldsCache($dbname, $records)){
-                $changed = true;
+            
+            $pads = str_repeat('?,', count($table_names)-1).'?';
+            if(0 < $db->execute(
+                "SELECT `TABLE_NAME`, `COLUMN_NAME`, `DATA_TYPE`, `COLUMN_COMMENT` FROM information_schema.COLUMNS WHERE TABLE_SCHEMA= ? AND TABLE_NAME IN($pads)",
+                [
+                    [$dbname,\PDO::PARAM_STR], 
+                    ...array_map(function($tbname){return [$tbname, \PDO::PARAM_STR];}, $table_names)
+                ], 
+                Db::SQL_SELECT
+            )){
+                $records = $db->result(
+                    [
+                        ['TABLE_NAME',\PDO::PARAM_STR], 
+                        ['COLUMN_NAME', \PDO::PARAM_STR], 
+                        ['DATA_TYPE', \PDO::PARAM_STR], 
+                        ['COLUMN_COMMENT', \PDO::PARAM_STR]
+                    ],
+                    \sys\Db::SQL_SELECT
+                );
+                echo "build_cache: {$dbname} \n";
+                if(true === static::lazyAppendFieldsCache($dbname, $records)){
+                    $changed = true;
+                }
             }
             $db = null;
         }
 
-        # echo "================= ". ($changed === true ? 'true' : 'false').PHP_EOL;
+        # echo "================= ". ($changed === true ? 'true' : 'false')."\n";
         if($changed){
             \sys\Config::save('tables_gen');
         }
@@ -113,17 +132,30 @@ class Helpers
         $tables = \sys\Config::get("tables.{$dbname}.structs");
         $result = [];
         $changed = false;
+
         foreach($fields ?? [] as $item){
             $tbname = $item['TABLE_NAME'];
             $colname = $item['COLUMN_NAME'];
             $nv  = $tables[$tbname][$colname] ?? $types_map[ $item['DATA_TYPE'] ];
-
             if(!isset($result[$tbname][$colname]) || $nv !== ($result[$tbname][$colname])){
                 # echo "update field Info {$colname} ".(isset($result[$tbname][$colname])? $result[$tbname][$colname] : 'null')." ==> {$nv}\n";
                 $result[$tbname][$colname] = $nv;
                 $changed = true;
             }
         }
+
+        // 合并虚拟字段
+        if(is_array($tables)){
+            foreach($tables as $tbname=>$fields){
+                foreach($fields as $colname=>$nv) {
+                    if(!isset($result[$tbname][$colname])) {
+                        $result[$tbname][$colname] = $nv;
+                        $changed = true;
+                    }
+                }
+            }
+        }
+
         # 如果发生改变 就保存到内存缓存中.
         if($changed){
             foreach($result as $tbname=>$fields){
@@ -133,4 +165,17 @@ class Helpers
         }
         return $changed;
     }
+
+    public static function rand($length=6){
+        $chars = "5869341270";
+        $len = strlen($chars);
+		$ret = [];
+		for ( $i = 0; $i < $length; $i++ )  {  
+			$ret[] = $chars[mt_rand(0, strlen($chars)-1)];
+		} 
+		return \implode('', $ret);
+    }
+
+
+    
 }
