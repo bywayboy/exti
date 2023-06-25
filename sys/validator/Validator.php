@@ -272,6 +272,7 @@ class Validator implements JsonSerializable {
     protected static function number($value, array $data, ?array $args) : bool {
         if(null === $value || ''=== $value) return true;
         return preg_match('/^[\+\-]{0,1}\d+(\.\d+){0,1}$/', strval($value)) ? true : false;
+        //return is_float($value) || is_int($value);
     }
 
     # 无符号数字(包含浮点和整数)验证

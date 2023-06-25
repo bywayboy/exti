@@ -412,15 +412,13 @@ if(!function_exists('nonceStr')){
 if(!function_exists('groupby')){
     function groupby(array|object $records, string $field = 'order_id') : array{
         $ret = [];
-        if(is_array($records)){
-            foreach ($records as $value) {
+        foreach ($records as $value) {
+            if(is_array($value)){
                 $key = $value[$field] ?? false;
                 if(false !== $key){
                     $ret[$key][] = $value;
                 }
-            }
-        }else{
-            foreach ($records as $value) {
+            }else{
                 $key = $value->$field ?? false;
                 if(false !== $key){
                     $ret[$key][] = $value;
@@ -538,6 +536,25 @@ if(!function_exists('array_search_callback')){
             if($callback($row))
                 return $i;
             $i++;
+        }
+        return -1;
+    }
+}
+
+if(!function_exists('binary_search_callback')){
+    function binary_search_callback(array $array, callable $callback) : int {
+        $start = 0;
+        $end = count($array) - 1;
+        while($start <= $end){
+            $mid = intval(($start + $end) / 2);
+            $midv = $callback($array[$mid]);
+            if($midv === 0) # 找到了
+                return $mid;
+            else if($midv > 0){
+                $start = $mid + 1;
+            }else{
+                $end = $mid - 1;
+            }
         }
         return -1;
     }

@@ -129,7 +129,7 @@ class CrontabTask {
         $closure = function (int $time, \Closure $closure, string $every, callable $callable){
             # 准备下一个任务
             $next = strtotime($every, $time);
-            Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $next), 'Crontab', 'INFO');
+            # Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $next), 'Crontab', 'INFO');
             $this->timerid = Timer::after(max(1000 * ($next - $time), 0), $closure, $next, $closure, $every, $callable);
             # 执行当前任务
             Coroutine::create(function(int $time) use($callable) : void {
@@ -149,7 +149,7 @@ class CrontabTask {
             $at = strtotime($every, $at);
         }
         $this->timerid = Timer::after(1000 * ($at - $time), $closure, $at, $closure, $every, $callable);
-        Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $at), 'Crontab', 'INFO');
+        # Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $at), 'Crontab', 'INFO');
     }
     
     /**
@@ -163,7 +163,7 @@ class CrontabTask {
         $closure = function (int $time, \Closure $closure, int $every, callable $callable){
             # 准备下一个任务
             $next = $time + $every;
-            Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $next), 'Crontab', 'INFO');
+            # Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $next), 'Crontab', 'INFO');
             $this->timerid = Timer::after(max(0, 1000 * ($next - $time)), $closure, $next, $every, $callable);
             # 执行当前任务
             Coroutine::create(function(int $time) use($callable) : void {
@@ -179,7 +179,7 @@ class CrontabTask {
         while($at < $time){
             $at += $every;
         }
-        Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $at), 'Crontab', 'INFO');
+        # Log::write("创建计划任务: 间隔:{$every}, 执行时间:". date('Y-m-d H:i:s', $at), 'Crontab', 'INFO');
         $this->timerid = Timer::after(1000 * ($at - $time), $closure, $at, $closure, $every, $callable);
     }
 }

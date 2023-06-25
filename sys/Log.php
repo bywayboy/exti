@@ -69,32 +69,34 @@ class Log {
     public static function console(string $logStr, string $level) : void {
         #字体颜色：30m-37m 黑、红、绿、黄、蓝、紫、青、白
         #背景颜色：40-47 黑、红、绿、黄、蓝、紫、青、白
+        $date = date('Y-m-d H:i:s');
+        $cid = \Swoole\Coroutine::getCid() ?? '-';
         switch($level){
             case 'ERROR':
-                $s = "\x1B[31m{$logStr}\x1B[0m\n";
+                $s = "\x1B[31m[{$date}][{$cid}][{$level}] {$logStr}\x1B[0m\n";
                 break;
             case 'WARN':
             case 'WARNING':
-                $s = "\x1B[33m{$logStr}\x1B[0m\n";
+                $s = "\x1B[33m[{$date}][{$cid}][{$level}] {$logStr}\x1B[0m\n";
                 break;
             case 'SUCCESS':
-                $s = "\x1B[32m{$logStr}\x1B[0m\n";
+                $s = "\x1B[32m[{$date}][{$cid}][{$level}] {$logStr}\x1B[0m\n";
                 break;
             case 'NOTICE':
             case 'SQL':
-                $s = "\x1B[34m{$logStr}\x1B[0m\n";
+                $s = "\x1B[34m[{$date}][{$cid}][{$level}] {$logStr}\x1B[0m\n";
                 break;
             case 'DEBUG':
-                $s = "\x1B[35m{$logStr}\x1B[0m\n";
+                $s = "\x1B[35m[{$date}][{$cid}][{$level}] {$logStr}\x1B[0m\n";
                 break;
             case 'CALL':
-                $s = "\x1B[36m{$logStr}\x1B[0m\n";
+                $s = "\x1B[36m[{$date}][{$cid}][{$level}] {$logStr}\x1B[0m\n";
                 break;
             case 'INFO':
-                $s = "\x1B[37m{$logStr}\x1B[0m\n";
+                $s = "\x1B[37m[{$date}][{$cid}][{$level}] {$logStr}\x1B[0m\n";
                 break;
             default:
-                $s = $logStr."\n";
+                $s = "[{$date}][{$cid}][{$level}] $logStr"."\n";
                 break;
             }
             echo $s;
@@ -108,12 +110,12 @@ class Log {
         if(null === static::$channel || static::$channel->isFull()){
             return;
         }
+        # 如果是控制台模式 同时打印日志到控制台.
+        IS_CLI && static::console($msg, $level);
+
         $date = date('Y-m-d H:i:s');
         $cid = \Swoole\Coroutine::getCid() ?? '-';
         $logstr = "[{$date}][{$cid}][{$level}] {$msg}";
-        
-        # 如果是控制台模式 同时打印日志到控制台.
-        IS_CLI && static::console($logstr, $level);
 
         null !== static::$channel && static::$channel->push($logstr . PHP_EOL);
     }
