@@ -391,7 +391,7 @@ class Db{
             $affert_rows = null;
             switch($retmode) {
             case Db::SQL_INSERT:
-                $this->_insid = $affert_rows = $conn->lastInsertId();
+                $this->_insid = $affert_rows = (int)$conn->lastInsertId();
                 break;
             case Db::SQL_FIND:
                 do{
