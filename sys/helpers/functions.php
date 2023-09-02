@@ -86,7 +86,7 @@ if(!function_exists('upgrade')) {
      * @param \sys\services\WebSocket  连接请求对象
      * @param Swoole\Http\Response 连接响应对象
      * @param string WebSocket 服务类
-     * @param int 队列尺寸.
+     * @param string  响应类.
      */
     function upgrade(Request $request, Response $response, string $service, string $m) : bool
     {
@@ -101,7 +101,7 @@ if(!function_exists('upgrade')) {
             return false;
         }
 
-        $s = new $service($request, new $m);
+        $s = new $service($request, new $m($request));
         $s->execute($response);
         return true;
     }
@@ -546,7 +546,7 @@ if(!function_exists('binary_search_callback')){
         $start = 0;
         $end = count($array) - 1;
         while($start <= $end){
-            $mid = intval(($start + $end) / 2);
+            $mid = (int)(($start + $end) / 2);
             $midv = $callback($array[$mid]);
             if($midv === 0) # 找到了
                 return $mid;
@@ -557,5 +557,41 @@ if(!function_exists('binary_search_callback')){
             }
         }
         return -1;
+    }
+}
+
+if(!function_exists('binary_insert')){
+    function binary_insert(array &$array, array $item, callable $callback) {
+        $start = 0;
+        $end = count($array) - 1;
+        while($start <= $end){
+            $mid = (int)(($start + $end) / 2);
+            $midv = $callback($array[$mid], $item);
+            if($midv === 0) # 找到了
+                return $mid;
+            else if($midv > 0){
+                $start = $mid + 1;
+            }else{
+                $end = $mid - 1;
+            }
+        }
+        array_splice($array, $start, 0, [$item]);
+        return $start;
+    }
+}
+
+if(!function_exists('isEAN13')){
+    function isEAN13(string $value):bool{
+        if(null === $value || '' === $value) return false;
+        if(!preg_match('/^\d{13}$/', $value))
+            return false;
+        $length = strlen($value);
+        $sum = 0; $sum1 = 0; $sum2 = 0;
+        for($i = 0; $i < 12; $i +=2){
+            $sum1 += $value[$i];
+            $sum2 += $value[$i + 1];
+        }
+        $sum = (10 - (($sum1 + $sum2 * 3) % 10) % 10);
+        return $sum == $value[$length - 1];
     }
 }

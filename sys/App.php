@@ -97,7 +97,7 @@ class App {
         # 在这里执行系统启动之前的任务.
         Log::console('=== Server Start ===','DEBUG');
         static::beforeWorkerManagerCreate();
-        Log::console('=== Server Start ===','DEBUG');
+
         # 允许使用原生函数
         \Swoole\Runtime::enableCoroutine(true, SWOOLE_HOOK_ALL | SWOOLE_HOOK_NATIVE_CURL);
 
