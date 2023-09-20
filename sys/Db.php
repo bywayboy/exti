@@ -43,6 +43,7 @@ class Db{
     # 执行结果保存
     protected $_result = null;
     protected int $_insid = 0;
+    protected int $size   = 0;
 
     # 数据库是否断开连接判断标识
     private static $connBreakDict = [
@@ -57,10 +58,11 @@ class Db{
 
         $this->dbname = $conf['dbname'];
         $this->logSql = $conf['log_sql'] ?? true;
-
+        $this->size   = $conf['size'] ?? 16;
 
         $this->_tableGenPfx = "tables_gen.{$this->dbname}";
         if(empty(self::$pool[$this->name])) {
+            # Log::write("Connection Size : {$this->size}",  'INFO');
             static::$pool[$this->name] = new PDOPool((new PDOConfig)
                 ->withHost($conf['dbhost'])
                 ->withPort($conf['dbport'])
@@ -73,9 +75,9 @@ class Db{
                     \PDO::ATTR_DEFAULT_FETCH_MODE =>\PDO::FETCH_ASSOC,  # 返回 k->v 数组
                     \PDO::ATTR_ERRMODE=>\PDO::ERRMODE_EXCEPTION,        # 异常模式
                     \PDO::ATTR_AUTOCOMMIT=>1,                           # 默认开启自动提交
-                    //\PDO::ATTR_PERSISTENT=>true,                        # 定义为持久连接(在连接池里面不需要)
+                    //\PDO::ATTR_PERSISTENT=>true,                      # 定义为持久连接(在连接池里面不需要)
                 ])
-                ,$conf['size'] ?? 16 # 默认创建16个数据库连接
+                ,$this->size # 默认创建16个数据库连接
             );
         }
     }
@@ -105,7 +107,7 @@ class Db{
         if(false !== ($this->cid = \Swoole\Coroutine::getCid())){
             static::CheckDeadLock($this->cid);
         }
-        return static::$pool[$this->name]->get();
+        return $this->conn = static::$pool[$this->name]->get();
     }
 
     /**
@@ -113,44 +115,59 @@ class Db{
      */
     protected function putConn(?PDOProxy $conn) {
         if($this->_trans_level > 0 && null !== $conn) {
-            Log::write('错误! 您有忘记提交的事务,该次数据库操作将被丢弃!!!!', 'Db','ERROR');
+            Log::write('错误! 您有忘记提交的事务,该次数据库操作将被丢弃!!!!', 'ERROR');
             $this->_trans_level = 0;
-            $conn->rollback();                                # 回滚
-            $conn->setAttribute(\PDO::ATTR_AUTOCOMMIT, 1);    # 开启自动提交
-            # throw new Exception('错误! 您有忘记提交的事务, 该次数据库操作将被丢弃!!!!', 0);
+            try{
+                $this->conn->rollback();                                # 回滚
+                $this->conn->setAttribute(\PDO::ATTR_AUTOCOMMIT, 1);    # 开启自动提交
+                # throw new Exception('错误! 您有忘记提交的事务, 该次数据库操作将被丢弃!!!!', 0);
+            }catch(\Throwable $e){
+                Log::write('发生异常: Object: ' .spl_object_id($this->conn). "\nLine: " . $e->getLine()."\nFILE: ". $e->getFile()."\n:Message: ". $e->getMessage().'Trace:' . $e->getTraceAsString(), 'ERROR');
+                Log::flush();
+            }
         }
-        static::$pool[$this->name]->put($conn);
+
+        if(null !== $this->conn){
+            static::$pool[$this->name]->put($conn);
+            $this->conn = null;
+        }
+
         # 死锁检测标记删除
         if(false !== $this->cid){
             unset(static::$cidMark[$this->cid]);
         }
-        $this->conn = null;
     }
 
     # 判断是否为连接丢失异常.
-    static private function isbreak(string $str) : bool {
+    static private function isbreak(string $str, string $name, int $i) : bool {
+        Log::write("数据库异常: {$name}, ({$i}) {$str}", 'ERROR');
         return static::$connBreakDict[$str] ?? false;
     }
 
     public function startTrans() {
         $this->_trans_level ++;
         if($this->_trans_level == 1){
+            $times = $this->size + 1;
             do{
                 try{
-                    $this->conn = $conn = $this->getConn();
+                    $conn = $this->getConn();
                     $conn->setAttribute(\PDO::ATTR_AUTOCOMMIT,0);     # 关闭自动提交
                     $conn->beginTransaction();                        # 开启事务
                     return;
                 }catch(PDOException $e){
-                    if($this->isbreak($e->errorInfo[2])){
-                        $this->_trans_level = 0;
+                    if($this->isbreak($e->errorInfo[2] ?? '', $this->name, $times)){
                         $this->putConn(null);
+                        if(0 == $times){
+                            throw $e;
+                        }
+                    }else{
+                        Log::write('发生异常: Object: ' .spl_object_id($conn). "\nLine: " . $e->getLine()."\nFILE: ". $e->getFile()."\n:Message: ". $e->getMessage().'Trace:' . $e->getTraceAsString(), 'ERROR');
+                        Log::flush();
+                        throw $e;
                     }
-                    Log::write('发生异常: ' . $e->getMessage().'trace:' . $e->getTraceAsString(), __CLASS__, 'ERROR');
-                    Log::flush();
-                    throw $e;
                 }
-            }while(true);
+                $times --;
+            }while($times > 0);
         }
     }
 
@@ -163,7 +180,7 @@ class Db{
                     $this->conn->setAttribute(\PDO::ATTR_AUTOCOMMIT, 1);    # 开启自动提交
                     $this->putConn($this->conn);                            # 交还连接
                 }catch(PDOException $e){
-                    if($this->isbreak($e->errorInfo[2] ?? '')){
+                    if($this->isbreak($e->errorInfo[2] ?? '', $this->name, 0)){
                         $this->putConn(null);
                     }else{
                         $this->putConn($this->conn);
@@ -186,7 +203,7 @@ class Db{
                     $this->putConn($this->conn);                            # 交还连接
                     return true;
                 }catch(PDOException $e){
-                    if($this->isbreak($e->errorInfo[2] ?? '')){
+                    if($this->isbreak($e->errorInfo[2] ?? '', $this->name, 0)){
                         $this->putConn(null);
                     }else{
                         $this->putConn($this->conn);
@@ -242,6 +259,7 @@ class Db{
 
         $conn = $this->getConn();
         $affert_rows = null;
+        $times = $this->size + 1;
         do{
             try{
                 $stmt = $conn->prepare($sql);
@@ -272,18 +290,25 @@ class Db{
                     break;
                 }
                 $stmt->closeCursor();
-                if(0 == $this->_trans_level) $this->putConn($conn);
+                if(0 == $this->_trans_level){
+                    $this->putConn($conn);
+                }
                 return $affert_rows;
             }catch(\PDOException $e){
                 //TODO: 连接断开判断.
-                if(static::isbreak($e->errorInfo[2] ?? '')){
+                if(static::isbreak($e->errorInfo[2] ?? '', $this->name, $times)){
                     $this->putConn(null);
+                    if($this->_trans_level > 0 || $times == 0){
+                        throw $e;
+                    }
                 }else{
                     $this->putConn($conn);
+                    throw $e; //继续抛出异常.
                 }
-                throw $e; //继续抛出异常.
             }
-        }while(true);
+            $times--;
+        }while($times > 0);
+        return null;
     }
 
     # 针对查询类语句 获取查询结果.
@@ -352,7 +377,27 @@ class Db{
         return $this->_insid;
     }
 
-
+    private function makeSqls(array $sqls, array &$execSqls, array &$tasks, array &$params) : int {
+        $numSqls = 0;
+        foreach($sqls as $sql){
+            if($sql instanceof SubQuery){
+                $params = [...$params, ...$sql->getParams()];
+                $execSqls[] = $sql->getSql();
+                $numSqls++;
+            }elseif($sql instanceof \sys\db\SubTask){
+                $params = [...$params, ...$sql->getParams()];
+                $execSqls[] = $sql->getSql();
+                $numSqls+=2;
+                $tasks[] = $sql;
+            }elseif(is_string($sql)){
+                $execSqls[] = $sql;
+                $numSqls++;
+            }elseif(is_array($sql)){
+                $numSqls += $this->makeSqls($sql, $execSqls, $tasks, $params);
+            }
+        }
+        return $numSqls;
+    }
     /**
      * 执行批量查询
      * @param array $sqls  sql 语句数组.
@@ -360,14 +405,96 @@ class Db{
      */
     public function batch_query(array $sqls, int $retmode = Db::SQL_UNKNOWN, int $flags = \PDO::FETCH_ASSOC) :?int
     {
-        $params = [];$sqlArr = []; $num = count($sqls);
-        foreach($sqls as $sql){
-            if($sql instanceof SubQuery){
-                $params = [...$params, ...$sql->getParams()];
-                $sqlArr[] = $sql->getSql();
-            }else{
-                $sqlArr[] = $sql;
+        $params = [];$sqlArr = []; $tasks = []; $num = count($sqls);
+        $num = $this->makeSqls($sqls, $sqlArr, $tasks, $params);
+        if($num == 0) return 0;
+        $allSql = implode(";\n", $sqlArr);
+
+        # 是否记录SQL日志
+        if($this->logSql){
+            $logSql = SubQuery::buildSql($allSql, $params);
+            Log::write($logSql, 'SQL');
+        }
+
+        $times = $this->size + 1;
+        do{
+            $conn = $this->getConn();
+            try{
+                # 在批量执行Sql的时候, 中间可能夹杂有 select 的情况.
+                # PDO在执行一条新的SQL的时候, 会检查是否存在尚未拉取完的结果集. 如果存在会报 Cannot execute queries while other unbuffered queries are active. 错误.
+                # 解决方法是 开启查询缓存, 这样 PDO在执行sql的时候会自动拉取所有结果集.
+                $stmt = $conn->prepare($allSql, [\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY=>true]);
+                foreach($params ?? [] as $i=>$value){
+                    $stmt->bindValue(1 + $i, $value[0], $value[1]);
+                }
+                $this->_result = null;
+                $stmt->execute();
+                $affert_rows = null;
+                switch($retmode) {
+                case Db::SQL_INSERT:
+                    $this->_insid = $affert_rows = (int)$conn->lastInsertId();
+                    break;
+                case Db::SQL_FIND:
+                    do{
+                        $row = $stmt->fetch($flags);
+                    }while ($stmt->nextRowset());
+                    $this->_result = is_array($row) ? $row : null;
+                    $affert_rows = $this->_result === null ? 0 : 1;
+                    break;
+                case Db::SQL_SELECT:
+                    do{
+                        $rows = $stmt->fetchAll($flags);
+                    }while ($stmt->nextRowset());
+                    $this->_result = $rows ?? null;
+                    $affert_rows = null == $this->_result ? 0 : count($this->_result);
+                    break;
+                default:
+                    do{
+                    }while ($stmt->nextRowset());
+                    $affert_rows = $stmt->rowCount();
+                    break;
+                }
+                $stmt->closeCursor();
+                if(0 == $this->_trans_level) $this->putConn($conn);
+                return $affert_rows;
+            }catch(PDOException $e){
+                Log::write(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),"\n"]),'ERROR');
+                if(static::isbreak($e->errorInfo[2] ?? '', $this->name, $times)) {
+                    $this->putConn(null);
+                    if($this->_trans_level > 0 || $times == 0){
+                        throw $e;
+                    }
+                } else {
+                    $this->putConn($conn);
+                    throw $e; //继续抛出异常.
+                }
             }
+            $times --;
+        }while($times > 0);
+        return null;
+    }
+
+    // 它能批量执行 insert 和update 语句. 并将结果返回.
+    /**
+     * 执行批量查询
+     * @param array $sqls  sql 语句数组.
+     * @param int $retmode 最后一条sql返回类型. Db::SQL_INSERT ...
+     */
+    public function batch_execute(array $sqls) :bool
+    {
+        $params = [];$sqlArr = []; $tasks = []; $num = 0;
+        $numSqls = $this->makeSqls($sqls, $sqlArr, $tasks, $params);
+        if($numSqls == 0) return 0;
+        $numTasks = count($tasks);
+
+        # 存在任务, 则需要获取任务的返回值.
+        if($numTasks > 0){                    
+            $fields = [];
+            foreach($tasks as $task){
+                $task->getVars($fields);
+            }
+            $numSqls++;
+            $sqlArr[] = 'SELECT '. implode(',', array_unique($fields));
         }
         $allSql = implode(";\n", $sqlArr);
 
@@ -377,53 +504,51 @@ class Db{
             Log::write($logSql, 'SQL');
         }
 
-        $conn = $this->getConn();
-        try{
-            # 在批量执行Sql的时候, 中间可能夹杂有 select 的情况.
-            # PDO在执行一条新的SQL的时候, 会检查是否存在尚未拉取完的结果集. 如果存在会报 Cannot execute queries while other unbuffered queries are active. 错误.
-            # 解决方法是 开启查询缓存, 这样 PDO在执行sql的时候会自动拉取所有结果集.
-            $stmt = $conn->prepare($allSql, [\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY=>true]);
-            foreach($params ?? [] as $i=>$value){
-                $stmt->bindValue(1 + $i, $value[0], $value[1]);
-            }
-            $this->_result = null;
-            $stmt->execute();
-            $affert_rows = null;
-            switch($retmode) {
-            case Db::SQL_INSERT:
-                $this->_insid = $affert_rows = (int)$conn->lastInsertId();
-                break;
-            case Db::SQL_FIND:
+        $times = $this->size + 1;
+        do{
+            $conn = $this->getConn();
+            try{
+                # 在批量执行Sql的时候, 中间可能夹杂有 select 的情况.
+                # PDO在执行一条新的SQL的时候, 会检查是否存在尚未拉取完的结果集. 如果存在会报 Cannot execute queries while other unbuffered queries are active. 错误.
+                # 解决方法是 开启查询缓存, 这样 PDO在执行sql的时候会自动拉取所有结果集.
+                $stmt = $conn->prepare($allSql, [\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY=>true]);
+                foreach($params ?? [] as $i=>$value){
+                    $stmt->bindValue(1 + $i, $value[0], $value[1]);
+                }
+                $this->_result = null;
+                $stmt->execute();
+                $numResult = 0;
                 do{
-                    $row = $stmt->fetch($flags);
+                    $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    $numResult ++;
                 }while ($stmt->nextRowset());
-                $this->_result = is_array($row) ? $row : null;
-                $affert_rows = $this->_result === null ? 0 : 1;
-                break;
-            case Db::SQL_SELECT:
-                do{
-                    $rows = $stmt->fetchAll($flags);
-                }while ($stmt->nextRowset());
-                $this->_result = $rows ?? null;
-                $affert_rows = null == $this->_result ? 0 : count($this->_result);
-                break;
-            default:
-                do{
-                }while ($stmt->nextRowset());
-                $affert_rows = $stmt->rowCount();
-                break;
+                Log::console("numResult: {$numResult}, numTasks: {$numSqls}",'DEBUG');
+                if($numTasks > 0){
+                    if(is_array($row)){
+                        foreach($tasks as $task){
+                            $task->setResults($row);
+                        }
+                        return true;
+                    }
+                    return false;
+                }
+                return $numResult == $numSqls;
+            }catch(PDOException $e){
+                if(static::isbreak($e->errorInfo[2] ?? '', $this->name, $times)) {
+                    $this->putConn(null);
+                    if($this->_trans_level > 0 || $times == 0){
+                        throw $e;
+                    }
+                } else {
+                    $this->putConn($conn);
+                    throw $e; //继续抛出异常.
+                }
             }
-            $stmt->closeCursor();
-            if(0 == $this->_trans_level) $this->putConn($conn);
-            return $affert_rows;
-        }catch(PDOException $e){
-            if(static::isbreak($e->errorInfo[2] ?? '')) {
-                $this->putConn(null);
-            } else {
-                $this->putConn($conn);
-            }
-            throw $e; //继续抛出异常.
-        }
-        return null;
+            $times --;
+        }while($times > 0);
+        return false;
+    }
+    public function task(string $table): \sys\db\SubTask {
+        return new \sys\db\SubTask($this, $table);
     }
 }

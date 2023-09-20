@@ -10,7 +10,7 @@ use Swoole\WebSocket\Frame;
 
 abstract class WebSocket {
     
-    public int $queue_size      = 20;       # 消息发送队列尺寸
+    public int $queue_size      = 5;       # 消息发送队列尺寸
     public int $wait_timeout    = 60;       # 等待超时
     public int $wait_times      = 2;        # 等待超时次数 超过后会被关闭.
 
@@ -26,8 +26,7 @@ abstract class WebSocket {
     /**
      * WebSocket 连接断开
      **/
-    protected function afterClose() : void
-    {
+    protected function afterClose() : void {
         
     }
 
@@ -165,7 +164,7 @@ abstract class WebSocket {
     
     public function getChannel() :?\Swoole\Coroutine\Channel
     {
-        return $this->channel ?? null;
+        return $this->channel;
     }
 
     public function close(){
@@ -174,7 +173,10 @@ abstract class WebSocket {
         $this->channel->close();
     }
 
-    public function push($msg) {
-        $this->channel->push($msg);
+    public function push($msg) :bool {
+        if(null === $this->channel){
+            return false;
+        }
+        return $this->channel->push($msg);
     }
 }

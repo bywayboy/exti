@@ -86,7 +86,7 @@ if(!function_exists('upgrade')) {
      * @param \sys\services\WebSocket  连接请求对象
      * @param Swoole\Http\Response 连接响应对象
      * @param string WebSocket 服务类
-     * @param int 队列尺寸.
+     * @param string  响应类.
      */
     function upgrade(Request $request, Response $response, string $service, string $m) : bool
     {
@@ -101,7 +101,7 @@ if(!function_exists('upgrade')) {
             return false;
         }
 
-        $s = new $service($request, new $m);
+        $s = new $service($request, new $m($request));
         $s->execute($response);
         return true;
     }
@@ -294,7 +294,6 @@ if(!function_exists('http_post'))
         }else{
             $result = ['url'=>$url, 'code'=>0, 'return_code'=>$http->errCode];
         }
-        echo json_encode($result, JSON_UNESCAPED_UNICODE)."\n";
         return $result;
     }
 }
@@ -332,7 +331,6 @@ if(!function_exists('http_get'))
         }else{
             $result = ['url'=>$url, 'code'=>0, 'return_code'=>$http->errCode];
         }
-
         return $result;
     }
 }
@@ -390,9 +388,10 @@ if(!function_exists('crontab')){
      * @return sys\CrontabTask 返回任务对象.
      */
     function crontab(string $every, string $at, callable $exec, int $time = 0) :\sys\CrontabTask{
-        if(0 == $time)
+        if(0 == $time){
             $time = time();
-    return new \sys\CrontabTask($time, $every, $at ,$exec);
+        }
+        return new \sys\CrontabTask($time, $every, $at ,$exec);
     }
 }
 
@@ -546,7 +545,7 @@ if(!function_exists('binary_search_callback')){
         $start = 0;
         $end = count($array) - 1;
         while($start <= $end){
-            $mid = intval(($start + $end) / 2);
+            $mid = (int)(($start + $end) / 2);
             $midv = $callback($array[$mid]);
             if($midv === 0) # 找到了
                 return $mid;
@@ -557,5 +556,62 @@ if(!function_exists('binary_search_callback')){
             }
         }
         return -1;
+    }
+}
+
+if(!function_exists('binary_insert')){
+    function binary_insert(array &$array, array $item, callable $callback) {
+        $start = 0;
+        $end = count($array) - 1;
+        while($start <= $end){
+            $mid = (int)(($start + $end) / 2);
+            $midv = $callback($array[$mid], $item);
+            if($midv === 0) # 找到了
+                return $mid;
+            else if($midv > 0){
+                $start = $mid + 1;
+            }else{
+                $end = $mid - 1;
+            }
+        }
+        array_splice($array, $start, 0, [$item]);
+        return $start;
+    }
+}
+
+if(!function_exists('isEAN13')){
+    function isEAN13(string $value):bool{
+        if(null === $value || '' === $value) return false;
+        if(!preg_match('/^\d{13}$/', $value))
+            return false;
+        $length = strlen($value);
+        $sum = 0; $sum1 = 0; $sum2 = 0;
+        for($i = 0; $i < 12; $i +=2){
+            $sum1 += $value[$i];
+            $sum2 += $value[$i + 1];
+        }
+        $sum = (10 - (($sum1 + $sum2 * 3) % 10) % 10);
+        return $sum == $value[$length - 1];
+    }
+}
+
+if(!function_exists('mime')){
+    function mime(string $content) :?string {
+        if(ord($content[0]) == 0xFF && ord($content[1]) == 0xD8 && ord($content[2]) == 0xFF){ # JPG
+            $mime = 'image/jpg';
+        }elseif(ord($content[0]) == 0x89 && ord($content[1]) == 0x50 && ord($content[2]) == 0x4E && ord($content[3]) == 0x47){ // PNG
+            $mime = 'image/png';
+        }elseif(ord($content[0]) == 0x47 && ord($content[1]) == 0x49 && ord($content[2]) == 0x46 && ord($content[3]) == 0x38){ // GIF
+            $mime = 'image/gif';
+        }elseif(ord($content[0]) == 0x49 && ord($content[1]) == 0x49 && ord($content[2]) == 0x2A && ord($content[3]) == 0x00){ // TIFF
+            $mime = 'image/tiff';
+        }elseif(ord($content[0]) == 0x52 && ord($content[1]) == 0x49 && ord($content[2]) == 0x46 && ord($content[3]) == 0x46){ // WEBP
+            $mime = 'image/webp';
+        }elseif(ord($content[0]) == 0x42 && ord($content[1]) == 0x4D){ // BMP
+            $mime = 'image/bmp';
+        }else{
+            $mime = null;
+        }
+        return $mime;
     }
 }

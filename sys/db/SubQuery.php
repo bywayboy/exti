@@ -5,6 +5,7 @@ namespace sys\db;
 
 use Exception;
 use Stringable;
+use sys\Log;
 
 /**
  * 查询缓存类, 用途分为两类.
@@ -73,10 +74,11 @@ class SubQuery {
                 $v = strval($param[0]);
             }
             $start = strpos($RawSql, '?', $start);
-            if($start >=0){
+            if($start >=0 && false !== $start){
                 $RawSql = substr_replace($RawSql, $v, $start, 1);
                 $start += strlen($v) + 1;
             }else{
+                Log::write('SQL: ' . $sql);
                 throw new Exception('[BUG] Sql 占位符和参数数目不一致.');
             }
         }

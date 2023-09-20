@@ -88,7 +88,7 @@ class HttpServer {
                 break;
             }
             $ipaddr = $request->header['x-real-ip'] ?? $request->server['remote_addr'];
-            Log::write("{$class}:{$method} {$ipaddr}", "CALL");
+            Log::write("{$uri} => {$class}:{$method} {$ipaddr}", "CALL");
 
             try{
                 $m = new $class();

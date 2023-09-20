@@ -40,15 +40,6 @@ class Log {
     protected static function toStorage($fp, $fpmem, int $iCacheSize) : ?int {
         
         if($iCacheSize > 0){
-            /*
-            rewind($fpmem);
-            if(false !== ($content = fread($fpmem, $iCacheSize))){
-                rewind($fpmem);
-                if(false != ($numWrite = System::fwrite($fp, $content))){
-                    return $numWrite;
-                }
-            }
-            */
             rewind($fpmem);
             if(false !== ($numWrite = stream_copy_to_stream($fpmem, $fp, $iCacheSize))){
                 rewind($fpmem);
@@ -130,7 +121,7 @@ class Log {
             if(false === $mem){
                 echo "[ERROR] [{$workerId}] 打开内存缓存失败, 日志功能将被关闭!\n";
             }
-            $day = date('d');
+            $day = (int)date('d');
 
             $iFileSize = $iCacheSize = 0;
             $file = static::dir($workerId).date('d.\tx\t');
@@ -150,21 +141,19 @@ class Log {
                     if($channel->errCode === SWOOLE_CHANNEL_CLOSED)
                         break;
 
-                    # 如果满足2个条件: 
-                    #       1. 内存满了, 
-                    #       2. 超时了 且有内存数据内存数据写盘
-                    if($iCacheSize >= static::MAX_MEM_CACHE_SIZE || ($channel->errCode == SWOOLE_CHANNEL_TIMEOUT && $iCacheSize > 0)) {
-                        if(null !== ($numWrite = static::toStorage($fp, $mem, $iCacheSize))){
-                            $iFileSize += $numWrite;
-                            $iCacheSize -= $numWrite;
+                    $d = (int)date('d');
+                    if($iCacheSize > 0){
+                        if($iCacheSize >= static::MAX_MEM_CACHE_SIZE || $channel->errCode == SWOOLE_CHANNEL_TIMEOUT || $d != $day) {
+                            if(null !== ($numWrite = static::toStorage($fp, $mem, $iCacheSize))){
+                                $iFileSize += $numWrite;
+                                $iCacheSize -= $numWrite;
+                            }
                         }
                     }
-
-                    $d = date('d');
+                    
                     # 日期变了, 或者文件满了. 重开日志文件.
                     if($iFileSize >= static::MAX_LOG_FILE_SIZE || $day !== $d){
                         $day = $d;
-
                         # 关闭旧的,并重命名
                         fclose($fp);
                         $time = time();
@@ -220,6 +209,8 @@ class Log {
                     }
                 }
             }
+
+
             if(false !== $mem && false !== $fp && $iCacheSize > 0){
                 # echo "写出内存日志... {$iCacheSize}字节\n";
                 static::toStorage($fp, $mem, $iCacheSize);

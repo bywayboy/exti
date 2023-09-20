@@ -6,10 +6,9 @@ declare(strict_types=1);
     时间: 2021-09-18
 */
 namespace sys;
-use Swoole\Http\Request;
-use Swoole\Http\Response;
+
 use Swoole\Coroutine;
-use Swoole\Coroutine\WaitGroup;
+use \Swoole\Coroutine\Barrier;
 use Throwable;
 
 class App {
@@ -41,11 +40,10 @@ class App {
      * @param int $workerId 进程ID
      */
     private static function beforeWorkerStart(string $module, int $serverId, int $workerId):void {
-        $wg = new WaitGroup();
-        $wg->add();
-        Coroutine::create(function () use($wg, $module, $serverId, $workerId){
-            $time = time();
+        $barrier = Barrier::make();
+        Coroutine::create(function () use($barrier, $module, $serverId, $workerId){
             try{
+                $time = time();
                 $class = "\\app\\{$module}\\BootStarup::onWorkerStart";
                 call_user_func_array($class, [$serverId, $workerId]);
                 $crontab = Config::get('crontab', []);
@@ -54,12 +52,11 @@ class App {
                         crontab($task['every'], $task['at'] ?? '', $task['exec'], $time);
                     }
                 }
-            }catch(Throwable $e){
+            }catch(Throwable $e) {
                 Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),"\n"]),'ERROR');
             }
-            $wg->done();
         });
-        $wg->wait();
+        Barrier::wait($barrier);
     }
 
     /**
@@ -70,19 +67,16 @@ class App {
      * @param int $workerId 进程ID
      */
     private static function beforeWorkeShutdown(string $module, int $serverId, int $workerId):void {
-        $wg = new WaitGroup();
-        $wg->add();
-        Coroutine::create(function () use($wg, $module, $serverId, $workerId){
-            $time = time();
+        $barrier = Barrier::make();
+        Coroutine::create(function () use($barrier, $module, $serverId, $workerId){
             try{
                 $class = "\\app\\{$module}\\BootStarup::onWorkerShutdown";
                 call_user_func_array($class, [$serverId, $workerId]);
             }catch(Throwable $e){
                 Log::console(implode([$e->getMessage(),"\nFILE: ", $e->getFile(), "\nLINE: ", $e->getLine(),"\nTRACE: ", $e->getTraceAsString(),"\n"]),'ERROR');
             }
-            $wg->done();
         });
-        $wg->wait();
+        Barrier::wait($barrier);
     }
 
     /**
@@ -97,7 +91,7 @@ class App {
         # 在这里执行系统启动之前的任务.
         Log::console('=== Server Start ===','DEBUG');
         static::beforeWorkerManagerCreate();
-        Log::console('=== Server Start ===','DEBUG');
+
         # 允许使用原生函数
         \Swoole\Runtime::enableCoroutine(true, SWOOLE_HOOK_ALL | SWOOLE_HOOK_NATIVE_CURL);
 
