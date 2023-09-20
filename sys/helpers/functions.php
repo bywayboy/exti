@@ -615,3 +615,36 @@ if(!function_exists('mime')){
         return $mime;
     }
 }
+
+
+
+if(!function_exists('image_thumb')){
+    /**
+     * 生成缩略图
+     * @param string $img 图片内容
+     * @param int $maxWidth 最大宽度
+     */
+    function image_thumb(string $img, int $maxWidth=400) :?string {
+        list($width,$height) = getimagesizefromstring($img);
+        if(false === $width || false === $height){
+            return null;
+        }
+        
+        if($width > $maxWidth){
+            $rate = $maxWidth / $width;
+            $im = imagecreatefromstring($img);
+            $dst = imagecreatetruecolor((int)floor($rate * $width), (int)floor($rate * $height));
+            imagecopyresampled($dst, $im, 0, 0, 0, 0, (int)floor($rate * $width), (int)floor($rate * $height), $width, $height);
+
+            ob_start();
+            imagejpeg($dst, NULL, 90);
+            $binary = ob_get_contents();
+            ob_end_clean();
+            imagedestroy($im);
+            imagedestroy($dst);
+        }else{
+            $binary = $img;
+        }
+        return $binary;
+    }
+}
