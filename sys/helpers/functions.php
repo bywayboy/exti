@@ -264,13 +264,13 @@ if(!function_exists('http_post'))
     /**
      * 发起一个HTTP Post 请求.
      * @param string $url 请求资源地址.
-     * @param string $payload POST 的内容
+     * @param array|string $payload POST 的内容
      * @param null|array $headers HTTP协议头部信息
      * @param int $timeout 超时时间
      * @param  null|array $certs 证书 需包含2个成员 ssl_cert_file, ssl_key_file
      * @return array return_code 错误码 0 成功, code http返回状态码, url 请求的url, body 返回内容.
      */
-    function http_post(string $url, string $payload, ?array $headers = null, int $timeout = 30, ?array $certs = null) : array {
+    function http_post(string $url, array|string $payload, ?array $headers = null, int $timeout = 30, ?array $certs = null) : array {
         $parts = parse_url($url);
         $port = $parts['port'] ?? ('https' == $parts['scheme']?443:80);
         $http = new \Swoole\Coroutine\Http\Client($parts['host'], $port, 'https' == $parts['scheme']);
@@ -283,7 +283,29 @@ if(!function_exists('http_post'))
         ], $certs ?? []));
 
         $http->setMethod('POST');
-        $http->setData($payload);
+        if(is_array($payload)){
+            $data = []; $files = [];
+            foreach($payload as $key=>$val){
+                if($val instanceof \sys\UploadFile){
+                    $files[$key] = $val;
+                }else{
+                    $data[$key] = $val;
+                }
+            }
+
+            if(0 < count($data)){
+                $http->setData($data);
+            }
+            foreach($files as $key=>$val){
+                if($val->is_file){
+                    $http->addFile($val->data, $key, $val->mime, $val->filename);
+                }else{
+                    $http->addData($val->data, $key, $val->mime, $val->filename);
+                }
+            }
+        }else{
+            $http->setData($payload);
+        }
         
         if(null !== $headers)
             $http->setHeaders($headers);
