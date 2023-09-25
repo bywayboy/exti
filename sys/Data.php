@@ -78,16 +78,21 @@ abstract class Data implements JsonSerializable {
     }
    
     /**
-     * 检查是否符合更新条件.
-     */
-    public function where(array $cond) : static | \sys\data\Deny{
-        foreach($cond as $prop=>$value){
-            if($this->$prop != $value){
-                return new \sys\data\Deny();
-            }
-        }
-        return $this;
-    }
+    * 检查是否符合更新条件.
+    */
+   public function where(array $cond) : static | \sys\data\Deny{
+       foreach($cond as $prop=>$value){
+           if(is_callable($value)){
+               if(!$value($this->$prop)){
+                   return new \sys\data\Deny();
+               }
+               return $this;
+           }elseif($this->$prop != $value){
+               return new \sys\data\Deny();
+           }
+       }
+       return $this;
+   }
 
     /**
      * 更新字段.
