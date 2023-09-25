@@ -35,13 +35,16 @@ abstract class Data implements JsonSerializable {
             $this->$prop = $data[$prop] ?? null;
         }
     }
+    
+    protected static function get(int $id) :?static {
+        return null;
+    }
 
     /**
      * 创建一个实例, 如果对象中已经存在 直接返回先前的实例.
      */
     public static function createInstance(array $data, bool $reload = false) : static {
-        # echo "instance: " . static::class . "\n";
-        if(null === ($u = (static::$pk[$data['id']] ?? null))){
+        if(null === ($u = static::get($data['id']))){
             return new static($data);
         }
         $reload && $u->update($data);
@@ -78,21 +81,21 @@ abstract class Data implements JsonSerializable {
     }
    
     /**
-    * 检查是否符合更新条件.
-    */
-   public function where(array $cond) : static | \sys\data\Deny{
-       foreach($cond as $prop=>$value){
-           if(is_callable($value)){
-               if(!$value($this->$prop)){
-                   return new \sys\data\Deny();
-               }
-               return $this;
-           }elseif($this->$prop != $value){
-               return new \sys\data\Deny();
-           }
-       }
-       return $this;
-   }
+     * 检查是否符合更新条件.
+     */
+    public function where(array $cond) : static | \sys\data\Deny{
+        foreach($cond as $prop=>$value){
+            if(is_callable($value)){
+                if(!$value($this->$prop)){
+                    return new \sys\data\Deny();
+                }
+                return $this;
+            }elseif($this->$prop != $value){
+                return new \sys\data\Deny();
+            }
+        }
+        return $this;
+    }
 
     /**
      * 更新字段.
