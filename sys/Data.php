@@ -61,7 +61,7 @@ abstract class Data implements JsonSerializable {
         return $ret;
     }
 
-    protected function onUpdate(array &$newvalue, array $oldvalue) :void 
+    protected function onUpdate(array &$newValue, array $oldValue) :void 
     {
 
     }
@@ -104,8 +104,8 @@ abstract class Data implements JsonSerializable {
      * @return ?array 有变更返回 变更数组, 无变更返回 null.
      */
     public function update(array $data, bool $setNull = false, &$oldValue = null) : ?array {
-        $newvalue = null;
-        $oldvalue = null;
+        $newValue = null;
+        $oldValue = null;
         # 比较值
 
         foreach(static::$propNamesU as $prop){
@@ -113,29 +113,29 @@ abstract class Data implements JsonSerializable {
                 if(value_compare($data[$prop], $this->$prop)){
                     continue;
                 }
-                $oldvalue[$prop] = $this->$prop;
-                $newvalue[$prop] = $this->$prop = $data[$prop];
+                $oldValue[$prop] = $this->$prop;
+                $newValue[$prop] = $this->$prop = $data[$prop];
             }else if(true === $setNull){
-                $oldvalue[$prop] = $this->$prop;
-                $newvalue[$prop] = $this->$prop = null;
+                $oldValue[$prop] = $this->$prop;
+                $newValue[$prop] = $this->$prop = null;
             }
         }
     
 
         # 触发更新事件, 用于 Traits 重建索引.
-        if(null !== $newvalue){
-            $this->onUpdate($newvalue, $oldvalue);
+        if(null !== $newValue){
+            $this->onUpdate($newValue, $oldValue);
         }
 
-        return $newvalue;
+        return $newValue;
     }
 
     /**
      * 检查字段
      */
     public function checkUpdate(array $data, bool $setNull = false) : ?array {
-        $newvalue = null;
-        $oldvalue = null;
+        $newValue = null;
+        $oldValue = null;
         # 比较值
 
         foreach(static::$propNamesU as $prop){
@@ -143,14 +143,14 @@ abstract class Data implements JsonSerializable {
                 if(value_compare($data[$prop], $this->$prop)){
                     continue;
                 }
-                $oldvalue[$prop] = $this->$prop;
-                $newvalue[$prop] = $data[$prop];
+                $oldValue[$prop] = $this->$prop;
+                $newValue[$prop] = $data[$prop];
             }else if(true === $setNull){
-                $oldvalue[$prop] = $this->$prop;
-                $newvalue[$prop] = null;
+                $oldValue[$prop] = $this->$prop;
+                $newValue[$prop] = null;
             }
         }
-        return $newvalue;
+        return $newValue;
     }
 
     public function __get($name) : mixed

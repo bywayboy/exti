@@ -237,8 +237,8 @@ if(!function_exists('fields_compare'))
 {
     function fields_compare(array $new, array $old, bool $setNull)
     {
-        $newvalue = null;
-        $oldvalue = null;
+        $newValue = null;
+        $oldValue = null;
         # 比较值
 
         $propNamesU = array_keys($old);
@@ -247,15 +247,15 @@ if(!function_exists('fields_compare'))
                 if(value_compare($new[$prop], $old[$prop])){
                     continue;
                 }
-                $oldvalue[$prop] = $old[$prop];
-                $newvalue[$prop] = $old[$prop] = $new[$prop];
+                $oldValue[$prop] = $old[$prop];
+                $newValue[$prop] = $old[$prop] = $new[$prop];
             }else if(true === $setNull){
-                $oldvalue[$prop] = $old[$prop];
-                $newvalue[$prop] = $old[$prop] = null;
+                $oldValue[$prop] = $old[$prop];
+                $newValue[$prop] = $old[$prop] = null;
             }
         }
 
-        return $newvalue;
+        return $newValue;
     }
 }
 
